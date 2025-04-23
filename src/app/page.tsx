@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import Header from '../components/Header';
+import Contest from '@/components/tabs/Contest';
 
 interface TabData {
   id: number;
@@ -10,7 +11,6 @@ interface TabData {
 
 function Page() {
   const tabs: TabData[] = [
-    { id: 0, label: "Overview", width: "w-8" },
     { id: 1, label: "Contest", width: "w-6" },
     { id: 2, label: "Leaderboard", width: "w-12" },
     { id: 3, label: "Announcements", width: "w-12" },
@@ -27,7 +27,7 @@ function Page() {
     <div className='px-24 pt-4'>
       <Header />
       <main className='mt-2'>
-        <h1 className="text-4xl font-semibold py-6">Main Dashboard</h1>
+        <h1 className="text-4xl font-semibold py-6">Welcome <span className='text-primary ml-1'>Bhupendra</span></h1>
         <nav className='flex space-x-12 text-sm'>
           {tabs.map((tab) => (
             <div key={tab.id} className="relative flex flex-col items-center">
@@ -44,8 +44,8 @@ function Page() {
           ))}
         </nav>
         <div className="mt-8">
-          {selectedTab.id === 0 && <div>Overview Content</div>}
-          {selectedTab.id === 1 && <div>Contest Content</div>}
+          {selectedTab.id === 0 && <Contest />}
+          {selectedTab.id === 1 && <Contest />}
           {selectedTab.id === 2 && <div>Leaderboard Content</div>}
           {selectedTab.id === 3 && <div>Announcements Content</div>}
         </div>
