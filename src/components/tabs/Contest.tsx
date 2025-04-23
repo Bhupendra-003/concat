@@ -131,9 +131,9 @@ function Contest() {
                             </div>
 
                             <div className="flex gap-3">
-                                {contest.status === "Active" && <Button>Participate</Button>}
+                                {contest.status === "Active" && <Button>View</Button>}
                                 {contest.status === "Upcoming" && <Button>Register</Button>}
-                                {contest.status === "Ended" && <Button>View</Button>}
+                                {contest.status === "Ended" && <Button className="opacity-50">Ended</Button>}
                             </div>
                         </div>
                     </div>
