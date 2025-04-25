@@ -1,8 +1,8 @@
 "use client";
 import React, { useState } from 'react';
-import { Clock, Users, ChevronRight, Award, Calendar } from 'lucide-react';
+import { Clock, Users, Award, Calendar } from 'lucide-react';
 import Button from '../Button';
-
+import Link from 'next/link';
 interface Contest {
     id: string;
     name: string;
@@ -15,7 +15,6 @@ interface Contest {
 
 function Contest() {
     const [activeTab, setActiveTab] = useState<'Active' | 'Upcoming' | 'Ended'>('Active');
-
     const contests: Contest[] = [
         {
             id: "c1",
@@ -131,8 +130,8 @@ function Contest() {
                             </div>
 
                             <div className="flex gap-3">
-                                {contest.status === "Active" && <Button>View</Button>}
-                                {contest.status === "Upcoming" && <Button>Register</Button>}
+                                {contest.status === "Active" && <Link href={`/contest/${contest.id}`}><Button>View</Button></Link>}
+                                {contest.status === "Upcoming" && <Link href={`/contest/${contest.id}`}><Button>Register</Button></Link>}
                                 {contest.status === "Ended" && <Button className="opacity-50">Ended</Button>}
                             </div>
                         </div>
