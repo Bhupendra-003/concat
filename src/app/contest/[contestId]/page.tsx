@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import Problems from '@/components/tabs/Problems';
-import Header from '@/components/Header';
+import Header from '@/components/UserHeader';
 interface TabData {
     id: number;
     label: string;

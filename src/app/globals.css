@@ -22,6 +22,9 @@
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
+  --color-color-1: var(--color-1);
+  --color-color-2: var(--color-2);
+  --color-color-3: var(--color-3);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
@@ -48,6 +51,9 @@
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
   --card: oklch(1 0 0);
+  --color-1: oklch(0.91 0.1422 95.37);
+  --color-2: oklch(0.78 0.1411 50.08);
+  --color-3: oklch(0.9 0.1781 129.22);
   --card-foreground: oklch(0.141 0.005 285.823);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.141 0.005 285.823);
@@ -80,6 +86,9 @@
 }
 
 .dark {
+  --color-1: oklch(0.91 0.1422 95.37);
+  --color-2: oklch(0.78 0.1411 50.08);
+  --color-3: oklch(0.9 0.1781 129.22);
   --background: oklch(.221 .005 270.823);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.3 0.01 260.71);
@@ -122,3 +131,44 @@
     @apply bg-background text-foreground;
   }
 }
+/* globals.css */
+
+/* Scrollbar Track */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1f1f1f; /* dark track to match the theme */
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #444; /* thumb in gray */
+  border-radius: 10px;
+  transition: background-color 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #666;
+}
+
+/* Firefox support */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #444 #1f1f1f;
+}
+
+
+/* Hide scrollbar (Webkit browsers: Chrome, Edge, Safari) */
+.scroll-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar (Firefox) */
+.scroll-hide {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;  /* IE and Edge */
+}
+

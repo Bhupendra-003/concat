@@ -1,6 +1,6 @@
 import { IoSearchSharp } from "react-icons/io5"; 
 import Link from 'next/link';
-export default function Header() {
+export default function createrHeader() {
     return (
         <header className="bg-background p-4 rounded-b-3xl flex items-center justify-between ">
             <div className="flex items-center space-x-8">
@@ -18,7 +18,7 @@ export default function Header() {
             {/* Search Box */}
             <div className="flex justify-between items-center gap-12 relative">
                 <nav className="flex space-x-12 text-sm">
-                    <Link href="/" className="text-muted-foreground hover:text-primary transition-all duration-200 font-semibold text-lg">Home</Link>
+                    <Link href="/creater" className="text-muted-foreground hover:text-primary transition-all duration-200 font-semibold text-lg">Home</Link>
                     <Link href="/settings" className="text-muted-foreground hover:text-primary transition-all duration-200 font-semibold text-lg">Settings</Link>
                     <Link href="/help" className="text-muted-foreground hover:text-primary transition-all duration-200 font-semibold text-lg">Help</Link>
                 </nav>
