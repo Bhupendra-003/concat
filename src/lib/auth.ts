@@ -7,7 +7,6 @@ import { sendEmail } from "@/app/auth/email";
 export const auth = betterAuth({
     emailAndPassword: {
         enabled: true,
-        requireEmailVerification: true,
     },
     database: drizzleAdapter(db, {
         provider: "pg",

@@ -7,7 +7,7 @@
 
 ### System
 - added authentication ✅
-- added email verification ✅ but cant use email verification as we dont have own domain fallbacking to username and password login.
+- added email verification ✅ but cant use email verification as we dont have own domain fallbacking to username and password login ✅.
 - added session check in dashboard and auth page ✅
 - added sign in and sign up functionality ✅
 - added sign out functionality ✅

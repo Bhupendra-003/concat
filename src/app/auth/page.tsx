@@ -41,7 +41,7 @@ export default function AuthForm() {
             console.log('Signing up... with email:', email);
             const { data, error } = await signUp(email, password, "Bhupendra", "");
             if (data) {
-                setView('verify');
+                router.push('/dashboard');
             }
             if (error) {
                 setError(error.message!);
@@ -127,7 +127,7 @@ export default function AuthForm() {
                     {view === 'signin' && (
                         <>
                             <h1 className="mb-6 text-center text-4xl font-bold">
-                                Sign in to Con<span className="text-primary">Cat</span>
+                                Welcome to Con<span className="text-primary">Cat</span>
                             </h1>
                             <div className="mb-6 text-center">
                                 <span className="text-muted-foreground">Don't have an account?</span>{' '}

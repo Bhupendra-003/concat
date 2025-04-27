@@ -30,13 +30,10 @@ export const signIn = async (email: string, password: string) => {
 }
 
 export const signOut = async () => {
-        const { data, error } = await authClient.signOut({
+    const { data, error } = await authClient.signOut({
         fetchOptions: {
-            onSuccess: () => {
-                router.push("/auth"); // redirect to login page
-            },
+            onSuccess: () => {},
             onError: (ctx) => {
-                // display the error message
                 alert(ctx.error.message);
             },
         },
