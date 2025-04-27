@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from 'react';
-import Header from '../components/UserHeader';
+import Header from '../../components/UserHeader';
 import Contest from '@/components/tabs/Contest';
 
 interface TabData {

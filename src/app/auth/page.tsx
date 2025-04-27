@@ -1,25 +1,44 @@
 "use client"
 import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
+import { signUp, signIn } from './auth-methods';
+import { Ring2 } from 'ldrs/react'
+import 'ldrs/react/Ring2.css'
+import { useRouter } from 'next/navigation';
+// import {signUp} from './check';
 
 export default function AuthForm() {
-    const [view, setView] = useState('signup'); // 'signup', 'signin', 'verify'
+    const router = useRouter();
+    const [view, setView] = useState<'signup' | 'signin' | 'verify'>('signup'); // 'signup', 'signin', 'verify'
     const [verificationCode, setVerificationCode] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [email, setEmail] = useState<string>('');
+    const [password, setPassword] = useState<string>('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // For signup/signin, we'd typically send the email and password
-        if (view === 'signup' || view === 'signin') {
-            console.log(`${view === 'signup' ? 'Signing up' : 'Signing in'} with:`, { email, password });
-            setView('verify');
+        setLoading(true);
+        setError(null);
+
+        if (view === 'signup') {
+            const { data, error } = await signUp(email, password, "Bhupendra", "");
+            if (data) {
+                router.push('/dashboard');
+            }
+            if (error) {
+                setError(error.message!);
+            }
+        } else if (view === 'signin') {
+            const { data, error } = await signIn(email, password);
+            if (data) {
+                router.push('/dashboard');
+            }
+            if (error) {
+                setError(error.message!);
+            }
         }
-        // For verification, we'd verify the code
-        else if (view === 'verify') {
-            console.log('Verifying code:', verificationCode);
-            // Verification logic would go here
-        }
+        setLoading(false);
     };
 
     return (
@@ -63,7 +82,7 @@ export default function AuthForm() {
                                     type="submit"
                                     className="w-full rounded-lg bg-primary py-3 font-medium text-white transition-colors hover:bg-primary/80"
                                 >
-                                    Continue
+                                    {loading ? <Ring2 size="20" stroke="3" strokeLength="0.25" bgOpacity="0.1" speed="0.8" color="white" /> : 'Sign up'}
                                 </button>
                             </form>
                         </>
