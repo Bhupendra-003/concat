@@ -1,6 +1,30 @@
-import { IoSearchSharp } from "react-icons/io5"; 
+"use client";
+import { IoSearchSharp } from "react-icons/io5";
 import Link from 'next/link';
+import { useState } from 'react';
+import { signOut } from "@/app/auth/auth-methods";
+import { Ring2 } from 'ldrs/react';
+import 'ldrs/react/Ring2.css';
+import { authClient } from "@/lib/auth-client";
 export default function userHeader() {
+    const [loading, setLoading] = useState(false);  
+    const [open, setOpen] = useState(false);
+    const handleLogout = () => {
+        setLoading(true);
+        signOut();
+        setLoading(false);
+    };
+    const {
+        data: session,
+        isPending, //loading state
+        error, //error object
+        refetch //refetch the session
+    } = authClient.useSession()
+    if(session?.user){
+        console.log('User is logged in', session.user)
+    }else{
+        console.log('User is not logged in')
+    }
     return (
         <header className="bg-background p-4 rounded-b-3xl flex items-center justify-between ">
             <div className="flex items-center space-x-8">
@@ -28,13 +52,18 @@ export default function userHeader() {
                         className="bg-input text-foreground placeholder-muted-foreground rounded-full py-3 pl-10 pr-10 w-96 focus:outline-none"
                     />
                     <IoSearchSharp size={20} className="absolute  right-5 top-1/2 transform -translate-y-1/2 text-muted-foreground group-hover:text-primary transition-colors duration-200" />
-                </div>  
+                </div>
 
                 {/* Profile Icon */}
                 <div>
-                    <div className="w-10 h-10 rounded-full bg-foreground flex items-center justify-center">
-                        <span className='text-background text-2xl font-semibold'>B</span>
-                    </div>
+                    <div onClick={() => setOpen(!open)} className='w-12 h-12 text-white flex items-center justify-center cursor-pointer bg-accent rounded-full text-2xl font-semibold'>B</div>
+                    {open && (
+                        <div className="absolute border border-muted-foreground right-0 top-15 w-48 bg-background rounded-md shadow-lg">
+                            <div className="p-2">
+                                <button className="w-full text-left text-sm text-muted-foreground hover:text-primary transition-all duration-200" onClick={handleLogout}>{loading ? <p><Ring2 /> <p>Logging out...</p></p> : 'Logout'}</button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
