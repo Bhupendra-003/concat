@@ -1,15 +1,22 @@
-import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer, primaryKey, uuid } from "drizzle-orm/pg-core";
 
+// User table
 export const user = pgTable("user", {
     id: text('id').primaryKey(),
     name: text('name').notNull(),
+    username: text('username').notNull().default(''),
+    points: integer('points').notNull().default(0),
+    rank: integer('rank').notNull().default(0),
+    solved: integer('solved').notNull().default(0),
     email: text('email').notNull().unique(),
     emailVerified: boolean('email_verified').notNull(),
     image: text('image'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
-    updatedAt: timestamp('updated_at').notNull().defaultNow()
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    role: text('role').notNull().default('user') // 'user' or 'creator'
 });
 
+// Session table
 export const session = pgTable("session", {
     id: text('id').primaryKey(),
     expiresAt: timestamp('expires_at').notNull(),
@@ -21,6 +28,7 @@ export const session = pgTable("session", {
     userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' })
 });
 
+// Account table
 export const account = pgTable("account", {
     id: text('id').primaryKey(),
     accountId: text('account_id').notNull(),
@@ -37,6 +45,7 @@ export const account = pgTable("account", {
     updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
 
+// Verification table
 export const verification = pgTable("verification", {
     id: text('id').primaryKey(),
     identifier: text('identifier').notNull(),
@@ -46,9 +55,57 @@ export const verification = pgTable("verification", {
     updatedAt: timestamp('updated_at').notNull().defaultNow()
 });
 
+// Contest table (no tags or problems array)
+export const contest = pgTable("contest", {
+    id: uuid('id').defaultRandom().primaryKey(),
+    name: text('name').notNull(),
+    startTime: timestamp('start_time').notNull(),
+    duration: integer('duration').notNull(),
+    questions: integer('questions').notNull(),
+    maxParticipants: integer('max_participants').notNull(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+// Problem table (no tag array)
+export const problem = pgTable("problem", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: text('name').notNull(),
+    points: integer('points').notNull(),
+    difficulty: text('difficulty').notNull(),
+    link: text('link').notNull(),
+});
+
+// Contest-Problem relationship table
+export const contestProblems = pgTable("contest_problems", {
+    contestId: uuid("contest_id").notNull().references(() => contest.id, { onDelete: "cascade" }),
+    problemId: uuid("problem_id").notNull().references(() => problem.id, { onDelete: "cascade" })
+}, (t) => ({
+    pk: primaryKey({ columns: [t.contestId, t.problemId] })
+}));
+
+// Tag table
+export const tag = pgTable("tag", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: text("name").notNull().unique()
+});
+
+// Problem-Tag relationship table
+export const problemTags = pgTable("problem_tags", {
+    problemId: uuid("problem_id").notNull().references(() => problem.id, { onDelete: "cascade" }),
+    tagId: uuid("tag_id").notNull().references(() => tag.id, { onDelete: "cascade" })
+}, (t) => ({
+    pk: primaryKey({ columns: [t.problemId, t.tagId] })
+}));
+
+// Export schema
 export const schema = {
     user,
     session,
     account,
-    verification
-}
+    verification,
+    contest,
+    problem,
+    contestProblems,
+    tag,
+    problemTags,
+};

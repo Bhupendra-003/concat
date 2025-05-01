@@ -1,7 +1,6 @@
 # TODO and Progress
 
 ### TODO
-- Magic link is redirecing to dashboard but session check is sending user to auth page because session is not made, Fix it.
 - In auth make search query for views to remember last view
 - Create Contest button with open on click and write logic  
 
