@@ -1,41 +1,11 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Clock, Users, Trash2, Tag, PlusCircle, FileText, Trophy } from "lucide-react";
+import { Clock, Users, Tag, PlusCircle, FileText, Trophy } from "lucide-react";
 import toast from "react-hot-toast";
 import { createContest } from "@/actions/actionContest";
 import { Problem } from "@/db/types";
-import { getProblems } from "@/actions/actionProblems";
-import { AddProblem } from "@/components/SelectProblem";
-
-interface FormData {
-    name: string;
-    startTime: string;
-    duration: string;
-    maxParticipants: number;
-    tags: string[];
-    problems: Problem[];
-}
-
-const problems: {
-    acRate: number;
-    difficulty: "Easy" | "Medium" | "Hard";
-    freqBar: null;
-    hasSolution: boolean;
-    hasVideoSolution: boolean;
-    isFavor: boolean;
-    isPaidOnly: boolean;
-    questionFrontendId: string;
-    status: null | string;
-    title: string;
-    titleSlug: string;
-    topicTags: {
-        id: string;
-        name: string;
-        slug: string;
-    }[];
-}[] = [];
-
-
+import AddProblem from "@/components/AddProblem";
+import { FormData } from "@/db/types";
 
 const page = () => {
     const [formData, setFormData] = useState<FormData>({
@@ -47,13 +17,8 @@ const page = () => {
         problems: [],
     });
     useEffect(() => {
-        const fetchProblems = async () => {
-            const res = await getProblems("EASY");
-            problems.push(...res);
-            console.log(problems)
-        };
-        fetchProblems();  
-    }, []);
+        console.log(formData)
+    }, [formData]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -63,6 +28,7 @@ const page = () => {
             setFormData((prev) => ({ ...prev, [name]: value }));
         }
     };
+
 
     const handleProblemChange = (index: number, field: keyof Problem, value: any) => {
         const updated = [...formData.problems];
@@ -177,99 +143,7 @@ const page = () => {
                                 <p className="text-sm mt-1">Add your first problem to get started</p>
                             </div>
                         ) : (
-                            <div className="space-y-6">
-                                {formData.problems.map((p, index) => (
-                                    <div key={index} className="bg-zinc-900 p-6 rounded-xl border border-zinc-700">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <h3 className="text-lg font-semibold text-white flex items-center">
-                                                <FileText className="mr-2 text-red-500" /> Problem {index + 1}
-                                            </h3>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleRemoveProblem(index)}
-                                                className="p-2 rounded-lg hover:bg-zinc-800 text-red-400 hover:text-red-500 transition-colors"
-                                                aria-label="Remove problem"
-                                            >
-                                                <Trash2 className="w-5 h-5" />
-                                            </button>
-                                        </div>
-
-                                        <div className="mb-4">
-                                            <label className="block mb-2 text-sm font-medium text-zinc-300">Problem Name</label>
-                                            <input
-                                                type="text"
-                                                placeholder="e.g., Two Sum"
-                                                value={p.name}
-                                                onChange={(e) => handleProblemChange(index, "name", e.target.value)}
-                                                className="w-full p-4 rounded-xl bg-zinc-800 text-white border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-                                            />
-                                        </div>
-
-                                        <div className="mb-4">
-                                            <AddProblem data={problems} />
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                            <div>
-                                                <label className="block mb-2 text-sm font-medium text-zinc-300">Problem Link</label>
-                                                <input
-                                                    type="text"
-                                                    placeholder="e.g., https://example.com/problem"
-                                                    value={p.link}
-                                                    onChange={(e) => handleProblemChange(index, "link", e.target.value)}
-                                                    className="w-full p-4 rounded-xl bg-zinc-800 text-white border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block mb-2 text-sm font-medium text-zinc-300">Points</label>
-                                                <input
-                                                    type="number"
-                                                    placeholder="e.g., 100"
-                                                    value={p.points}
-                                                    onChange={(e) => handleProblemChange(index, "points", Number(e.target.value))}
-                                                    className="w-full pl-12 p-4 rounded-xl bg-zinc-800 text-white border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-                                                />
-                                                <Trophy className="relative -top-10 -right-4 w-5 h-5" color="#ff4507" />
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block mb-2 text-sm font-medium text-zinc-300">Difficulty</label>
-                                                <select
-                                                    value={p.difficulty}
-                                                    onChange={(e) => handleProblemChange(index, "difficulty", e.target.value)}
-                                                    className="w-full p-4 rounded-xl bg-zinc-800 text-white border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-                                                >
-                                                    <option value="">Select difficulty</option>
-                                                    <option value="Easy">Easy</option>
-                                                    <option value="Medium">Medium</option>
-                                                    <option value="Hard">Hard</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block mb-2 text-sm font-medium text-zinc-300">Problem Tags</label>
-                                                <div className="relative">
-                                                    <input
-                                                        type="text"
-                                                        placeholder="e.g., dp, arrays, sorting"
-                                                        value={p.tags.join(", ")}
-                                                        onChange={(e) =>
-                                                            handleProblemChange(
-                                                                index,
-                                                                "tags",
-                                                                e.target.value.split(",").map((tag) => tag.trim())
-                                                            )
-                                                        }
-                                                        className="w-full p-4 pl-12 rounded-xl bg-zinc-800 text-white border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-                                                    />
-                                                    <Tag className="absolute left-4 top-4 text-zinc-500 w-5 h-5" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                            <AddProblem formData={formData} setFormData={setFormData} handleRemoveProblem={handleRemoveProblem} handleAddProblem={handleAddProblem} handleProblemChange={handleProblemChange} />
                         )}
 
                         <div className="flex justify-center mt-6">

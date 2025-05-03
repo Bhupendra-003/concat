@@ -12,3 +12,9 @@ export const getProblems = async (difficulty: "EASY" | "MEDIUM" | "HARD") => {
     const data = problems.questions;
     return data;
 }
+export const getProblem = async (slug: string) => {
+    const leetcode = new LeetCode();
+    const problem = await leetcode.problem(slug);
+    const data = problem;
+    return data;
+}   
