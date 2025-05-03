@@ -10,3 +10,11 @@ export interface Contest {
     status: string;
     createdAt: Date;
 }
+export interface Problem {
+    id: number;
+    name: string;
+    link: string;
+    points: number;
+    difficulty: "Easy" | "Medium" | "Hard" | "";
+    tags: string[];
+}

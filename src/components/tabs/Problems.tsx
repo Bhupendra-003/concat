@@ -1,6 +1,8 @@
 import React from 'react'
 import { FiCheckCircle, FiX } from "react-icons/fi";
 import { Button } from '../ui/button';
+// import { Problem } from '@/db/types';
+
 interface Problem {
     id: number;
     name: string;

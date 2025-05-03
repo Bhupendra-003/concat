@@ -1,17 +1,11 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Clock, Users, Trash2, Tag, PlusCircle, FileText, Trophy } from "lucide-react";
-import db from "@/db";
-import { contest } from "@/db/schema";
 import toast from "react-hot-toast";
 import { createContest } from "@/actions/actionContest";
-interface Problem {
-    name: string;
-    link: string;
-    points: number;
-    difficulty: "Easy" | "Medium" | "Hard" | "";
-    tags: string[];
-}
+import { Problem } from "@/db/types";
+import { getProblems } from "@/actions/actionProblems";
+import { AddProblem } from "@/components/SelectProblem";
 
 interface FormData {
     name: string;
@@ -22,6 +16,27 @@ interface FormData {
     problems: Problem[];
 }
 
+const problems: {
+    acRate: number;
+    difficulty: "Easy" | "Medium" | "Hard";
+    freqBar: null;
+    hasSolution: boolean;
+    hasVideoSolution: boolean;
+    isFavor: boolean;
+    isPaidOnly: boolean;
+    questionFrontendId: string;
+    status: null | string;
+    title: string;
+    titleSlug: string;
+    topicTags: {
+        id: string;
+        name: string;
+        slug: string;
+    }[];
+}[] = [];
+
+
+
 const page = () => {
     const [formData, setFormData] = useState<FormData>({
         name: "",
@@ -31,6 +46,14 @@ const page = () => {
         tags: [],
         problems: [],
     });
+    useEffect(() => {
+        const fetchProblems = async () => {
+            const res = await getProblems("EASY");
+            problems.push(...res);
+            console.log(problems)
+        };
+        fetchProblems();  
+    }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -52,9 +75,9 @@ const page = () => {
             ...formData,
             problems: [
                 ...formData.problems,
-                { name: "", link: "", points: 0, difficulty: "", tags: [] },
+                { id: formData.problems.length + 1, name: "", link: "", points: 0, difficulty: "", tags: [] },
             ],
-        });
+        }); 
     };
 
     const handleRemoveProblem = (index: number) => {
@@ -180,6 +203,10 @@ const page = () => {
                                                 onChange={(e) => handleProblemChange(index, "name", e.target.value)}
                                                 className="w-full p-4 rounded-xl bg-zinc-800 text-white border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-red-500"
                                             />
+                                        </div>
+
+                                        <div className="mb-4">
+                                            <AddProblem data={problems} />
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">

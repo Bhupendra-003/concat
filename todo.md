@@ -2,7 +2,8 @@
 
 ### TODO
 - In auth make search query for views to remember last view
-- Create Contest button with open on click and write logic  
+- Create Contest button with open on click and write logic 
+- Unify interfaces into types.ts file 
 
 ### System
 - added authentication ✅
@@ -13,12 +14,16 @@
 
 
 ### User Side
-- Make Timer for left time, and stopwatch that users can start and pause
+- Make Timer for left time, and stopwatch that users can start and pause ✅
+- dashboard UI ✅
+- contest page ✅
 
 ### Admin Side
 - Create Cards for Contests ✅
 - Create Contest ✅
 - Create progress bar which shows left contest time ✅
+- contest page ✅
+- contest being stored and fetched ✅
 
 ## Tips
 - If want to migrate schema, use `drizzle-kit push` but if giving error, drop schema first from neon console.
