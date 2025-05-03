@@ -1,6 +1,5 @@
 "use client";
 import { authClient } from "@/lib/auth-client"; //import the auth client
-import router from "next/router";
 export const signUp = async (email: string, password: string, name: string, image: string) => {
     console.log('Signing up...');
     const { data, error } = await authClient.signUp.email({
@@ -11,9 +10,10 @@ export const signUp = async (email: string, password: string, name: string, imag
         callbackURL: "/dashboard" // A URL to redirect to after the user verifies their email (optional)
     });
     if (error) {
-        console.error('Error signing up:', error);
+        throw error;
+    }else{
+        return { data, error };
     }
-    return { data, error };
 }
 
 export const signIn = async (email: string, password: string) => {
@@ -24,9 +24,10 @@ export const signIn = async (email: string, password: string) => {
         callbackURL: "/dashboard" // A URL to redirect to after the user verifies their email (optional)
     });
     if (error) {
-        console.error('Error signing in:', error);
+        throw error;
+    }else{
+        return { data, error };
     }
-    return { data, error };
 }
 
 export const signOut = async () => {
@@ -34,9 +35,13 @@ export const signOut = async () => {
         fetchOptions: {
             onSuccess: () => {},
             onError: (ctx) => {
-                alert(ctx.error.message);
+                throw ctx.error;
             },
         },
     });
-    return { data, error };
+    if (error) {
+        throw error;
+    }else{
+        return { data, error };
+    }
 }

@@ -20,4 +20,6 @@
 - Create Contest ✅
 - Create progress bar which shows left contest time ✅
 
-
+## Tips
+- If want to migrate schema, use `drizzle-kit push` but if giving error, drop schema first from neon console.
+- if getting error `Internal Server Error: 500`, check logs in your ide terminal

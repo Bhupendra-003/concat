@@ -11,6 +11,7 @@ export const user = pgTable("user", {
     email: text('email').notNull().unique(),
     emailVerified: boolean('email_verified').notNull(),
     image: text('image'),
+    activeContest: uuid('active_contest').references(() => contest.id, { onDelete: 'cascade' }),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
     role: text('role').notNull().default('user') // 'user' or 'creator'
@@ -63,6 +64,8 @@ export const contest = pgTable("contest", {
     duration: integer('duration').notNull(),
     questions: integer('questions').notNull(),
     maxParticipants: integer('max_participants').notNull(),
+    participants: integer('participants').notNull(),
+    status: text('status').notNull(),
     createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 

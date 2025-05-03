@@ -11,6 +11,8 @@ export async function createContest(formData: any) {
         duration: Number(formData.duration),
         maxParticipants: Number(formData.maxParticipants),
         questions: formData.problems.length,
+        participants: 0,
+        status: 'Not Started',
     };
 
     try {
@@ -24,20 +26,12 @@ export async function createContest(formData: any) {
         return { success: false, error: 'Failed to create contest' };
     }
 }
-export async function getContest(formData: any) {
-    const data: typeof contest.$inferInsert = {
-        name: formData.name,
-        startTime: new Date(formData.startTime),
-        duration: Number(formData.duration),
-        maxParticipants: Number(formData.maxParticipants),
-        questions: formData.problems.length,
-    };
-
+export async function getContest() {
     try {
         const res = await db.select().from(contest);
         if (res) {
             console.log('Contest fetched successfully:', res);
-            return { success: true };
+            return { success: true, data: res };
         }
     } catch (error) {
         console.error('Error fetching contest:', error);

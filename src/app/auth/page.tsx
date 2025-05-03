@@ -8,11 +8,10 @@ import { useRouter } from 'next/navigation';
 import { authClient } from "@/lib/auth-client";
 import Loading from '@/components/Loading';
 import 'ldrs/react/Ring2.css';
-
+import { toast } from 'react-hot-toast';
 export default function AuthForm() {
     const router = useRouter();
     const [view, setView] = useState<'signup' | 'signin' | 'verify'>('signup');
-    const [verificationCode, setVerificationCode] = useState('');
     const [email, setEmail] = useState<string>('');
     const [password, setPassword] = useState<string>('');
     const [sessionLoading, setSessionLoading] = useState(true); // default true
@@ -39,22 +38,28 @@ export default function AuthForm() {
 
         if (view === 'signup') {
             console.log('Signing up... with email:', email);
-            const { data, error } = await signUp(email, password, "Bhupendra", "");
-            if (data) {
+            toast.promise(signUp(email, password, "Bhupendra", ""), {
+                loading: 'Signing up...',
+                success: 'Signed up successfully',
+                error: 'Failed to sign up'
+            }).then((data) => {
+                console.log('Signed up successfully with data:', data);
                 router.push('/dashboard');
-            }
-            if (error) {
-                setError(error.message!);
-            }
+            }).catch((error: any) => {
+                setError(error.message);
+                console.error('Failed to sign up:', error);
+            });
         } else if (view === 'signin') {
             console.log('Signing in... with email:', email);    
-            const { data, error } = await signIn(email, password);
-            if (data) {
+            toast.promise(signIn(email, password), {
+                loading: 'Signing in...',
+                success: 'Signed in successfully',
+                error: 'Failed to sign in'
+            }).then(() => {
                 router.push('/dashboard');
-            }
-            if (error) {
-                setError(error.message!);
-            }
+            }).catch((error: any) => {
+                setError(error.message);
+            });
         }
         setLoading(false);
     };
@@ -103,6 +108,7 @@ export default function AuthForm() {
                                     className="w-full rounded-lg border bg-input p-3 text-white focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                                     placeholder="Email address"
                                     required
+                                    autoComplete="email"
                                     spellCheck={false}
                                 />
                                 <input
@@ -111,6 +117,7 @@ export default function AuthForm() {
                                     onChange={(e) => setPassword(e.target.value)}
                                     className="w-full rounded-lg border bg-input p-3 text-white focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                                     placeholder="Password"
+                                    autoComplete="new-password"
                                     required
                                 />
                                 <button
@@ -146,6 +153,7 @@ export default function AuthForm() {
                                     className="w-full rounded-lg border bg-input p-3 text-white focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                                     placeholder="Email address"
                                     required
+                                    autoComplete="email"
                                     spellCheck={false}
                                 />
                                 <input
@@ -154,6 +162,7 @@ export default function AuthForm() {
                                     onChange={(e) => setPassword(e.target.value)}
                                     className="w-full rounded-lg border bg-input p-3 text-white focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                                     placeholder="Password"
+                                    autoComplete="password"
                                     required
                                     spellCheck={false}
                                 />
