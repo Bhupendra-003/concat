@@ -64,7 +64,7 @@ export const contest = pgTable("contest", {
     questions: integer('questions').notNull(),
     maxParticipants: integer('max_participants').notNull().default(60),
     participants: integer('participants').notNull().default(0),
-    status: text('status').notNull(),
+    status: text('status').notNull().default('upcoming'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
