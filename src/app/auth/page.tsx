@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { signUp, signIn} from './auth-methods';
+import { signUp, signIn, googleSignIn } from './auth-methods';
 import { Ring2 } from 'ldrs/react';
 import { useRouter } from 'next/navigation';
 import { authClient } from "@/lib/auth-client";
@@ -50,7 +50,7 @@ export default function AuthForm() {
                 console.error('Failed to sign up:', error);
             });
         } else if (view === 'signin') {
-            console.log('Signing in... with email:', email);    
+            console.log('Signing in... with email:', email);
             toast.promise(signIn(email, password), {
                 loading: 'Signing in...',
                 success: 'Signed in successfully',
@@ -127,6 +127,15 @@ export default function AuthForm() {
                                     {loading ? <Ring2 size="20" stroke="3" strokeLength="0.25" bgOpacity="0.1" speed="0.8" color="white" /> : 'Sign up'}
                                 </button>
                             </form>
+                            <p className='text-center my-4'>Or</p>
+                            <button className="w-full rounded-lg bg-accent py-3 font-medium text-white transition-colors hover:bg-white hover:text-black" onClick={googleSignIn}>
+                                {loading ? 
+                                <Ring2 size="20" stroke="3" strokeLength="0.25" bgOpacity="0.1" speed="0.8" color="white" />
+                                : <div className='flex items-center justify-center gap-4'>
+                                    <img className='w-5' src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/480px-Google_%22G%22_logo.svg.png" alt="" />
+                                    <span className="">Sign up with Google</span>
+                                </div>}
+                            </button>
                         </>
                     )}
 
@@ -172,7 +181,17 @@ export default function AuthForm() {
                                 >
                                     {loading ? <Ring2 size="20" stroke="3" strokeLength="0.25" bgOpacity="0.1" speed="0.8" color="white" /> : 'Sign in'}
                                 </button>
+
                             </form>
+                            <p className='text-center my-4'>Or</p>
+                            <button className="w-full rounded-lg bg-accent py-3 font-medium text-white transition-colors hover:bg-white hover:text-black" onClick={googleSignIn}>
+                                {loading ? 
+                                <Ring2 size="20" stroke="3" strokeLength="0.25" bgOpacity="0.1" speed="0.8" color="white" />
+                                : <div className='flex items-center justify-center gap-4'>
+                                    <img className='w-5' src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/480px-Google_%22G%22_logo.svg.png" alt="" />
+                                    <span className="">Sign in with Google</span>
+                                </div>}
+                            </button>
                         </>
                     )}
 

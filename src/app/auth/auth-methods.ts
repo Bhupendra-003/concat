@@ -30,6 +30,13 @@ export const signIn = async (email: string, password: string) => {
     }
 }
 
+export const googleSignIn = async () => {
+    const data = await authClient.signIn.social({
+        provider: "google"
+    })
+    return data;
+}
+
 export const signOut = async () => {
     const { data, error } = await authClient.signOut({
         fetchOptions: {
