@@ -1,17 +1,20 @@
 import React from 'react';
 import { ContestDetails, Problem } from '../validation';
 import ProblemList from './ProblemList';
+import { Button } from '@/components/ui/button';
 
 interface ContestPreviewProps {
     contestDetails: ContestDetails;
     onEditProblem: (problem: Problem) => void;
     onDeleteProblem: (lcid: number) => void;
+    handleSubmit: () => Promise<void>;
 }
 
 const ContestPreview: React.FC<ContestPreviewProps> = ({
     contestDetails,
     onEditProblem,
-    onDeleteProblem
+    onDeleteProblem,
+    handleSubmit
 }) => {
     return (
         <div className="h-[90%] mt-6 rounded-2xl border border-gray-700 bg-[#1a1a1a] p-6 text-white shadow-lg">
@@ -60,6 +63,12 @@ const ContestPreview: React.FC<ContestPreviewProps> = ({
                     onEdit={onEditProblem} 
                     onDelete={onDeleteProblem} 
                 />
+                <Button
+                    onClick={handleSubmit}
+                    className="w-fit mt-8"
+                >
+                    Create Contest
+                </Button>
             </div>
         </div>
     );

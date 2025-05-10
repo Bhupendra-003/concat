@@ -6,13 +6,13 @@ import { ContestDetails } from '../validation';
 interface VisibilitySettingsProps {
     contestDetails: ContestDetails;
     setContestDetails: React.Dispatch<React.SetStateAction<ContestDetails>>;
-    createContest: () => Promise<void>;
+    handleSubmit: () => Promise<void>;
 }
 
 const VisibilitySettings: React.FC<VisibilitySettingsProps> = ({
     contestDetails,
     setContestDetails,
-    createContest
+    handleSubmit
 }) => {
     return (
         <div className="relative w-fit py-8 px-15">
@@ -33,7 +33,7 @@ const VisibilitySettings: React.FC<VisibilitySettingsProps> = ({
                 <span className="text-primary">anyone</span> with a link.
             </p>
             <Button
-                onClick={createContest}
+                onClick={handleSubmit}
                 className="w-fit bg-accent mt-8 absolute right-0"
             >
                 Create Contest

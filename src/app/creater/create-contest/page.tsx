@@ -17,6 +17,7 @@ import {
     validateContestDetails,
     validateNewProblem
 } from './validation'
+import { addContestToDB } from '@/actions/actionContest'
 
 export default function Page() {
     const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
@@ -129,42 +130,7 @@ export default function Page() {
         }
     }
 
-    const fetchProblem = async () => {
-        if (!newProblem.name) {
-            toast.error("Please provide name of problem");
-            return;
-        }
-        try {
-            toast.promise(getQuestion(newProblem.name), {
-                loading: 'Getting Problem from Leetcode',
-                success: 'Done',
-            }).then((problem) => {
-                // Check if the problem already exists in the contest
-                const lcid = problem?.questionId ? parseInt(problem?.questionId) : -1;
-                
-                if (!editMode && contestDetails.problems.some(p => p.lcid === lcid)) {
-                    toast.error("This problem is already added to the contest");
-                    return;
-                }
-                
-                setNewProblem({
-                    ...newProblem,
-                    difficulty: problem?.difficulty || 'Unknown',
-                    slug: problem?.titleSlug || '',
-                    name: problem?.title || '',
-                    lcid: lcid,
-                    link: `https://leetcode.com/problems/${problem?.titleSlug}/description/`
-                });
-            }).catch((error) => {
-                toast.error(error.message);
-            });
-        } catch (error) {
-            console.error('Error fetching problem difficulty:', error);
-            toast.error("Failed to fetch problem from LeetCode");
-        }
-    }
-
-    const createContest = async () => {
+    const handleSubmit = async () => {
         try {
             const isValid = await validateContestDetails(contestDetails, setValidationErrors);
             if (!isValid) {
@@ -175,7 +141,11 @@ export default function Page() {
             // Here you would typically submit the contest to your backend
             
             console.log("Contest details:", contestDetails);
-            
+            toast.promise(addContestToDB(contestDetails), {
+                loading: 'Creating contest...',
+                success: 'Contest created successfully',
+                error: 'Failed to create contest'
+            })
             // Clear form after successful submission
             // setContestDetails({
             //     name: '',
@@ -185,7 +155,6 @@ export default function Page() {
             //     visibility: false,
             //     problems: [],
             // });
-            toast.success("Contest created successfully!");
         } catch (error) {
             toast.error("Failed to create contest");
             console.error(error);
@@ -258,7 +227,7 @@ export default function Page() {
                             <VisibilitySettings 
                                 contestDetails={contestDetails}
                                 setContestDetails={setContestDetails}
-                                createContest={createContest}
+                                handleSubmit={handleSubmit}
                             />
                         </TabsContent>
                     </Tabs>
@@ -269,6 +238,7 @@ export default function Page() {
                     contestDetails={contestDetails}
                     onEditProblem={startEditProblem}
                     onDeleteProblem={deleteProblem}
+                    handleSubmit={handleSubmit}
                 />
             </main>
         </div>

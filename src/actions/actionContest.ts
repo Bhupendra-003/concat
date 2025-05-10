@@ -4,7 +4,7 @@
 import db from '@/db';
 import { contest } from '@/db/schema';
 
-export async function createContest(formData: any) {
+export async function addContestToDB(formData: any) {
     const data: typeof contest.$inferInsert = {
         name: formData.name,
         startTime: new Date(formData.startTime),
