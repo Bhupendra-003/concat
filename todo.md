@@ -11,6 +11,7 @@
 - added session check in dashboard and auth page ✅
 - added sign in and sign up functionality ✅
 - added sign out functionality ✅
+- added google sign in ✅
 
 
 ### User Side
