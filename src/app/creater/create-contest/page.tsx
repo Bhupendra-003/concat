@@ -2,13 +2,14 @@
 import React, { useEffect, useState } from 'react'
 import CreaterHeader from '@/components/CreaterHeader'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowUpRight, Pencil, PenOff, Timer, Trash2 } from 'lucide-react'
+import { AlertCircle, ArrowUpRight, Pencil, PenOff, Timer, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from "@/components/ui/switch"
 import { PiMedalMilitaryBold } from "react-icons/pi"
 import { getQuestion } from '@/actions/actionLeetQuery'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
+import * as yup from 'yup'
 
 interface Problem {
     name: string
@@ -28,8 +29,35 @@ interface ContestDetails {
     problems: Problem[]
 }
 
+interface ValidationErrors {
+    contestDetails?: Record<string, string>
+    newProblem?: Record<string, string>
+}
+
+// Validation schemas
+const problemSchema = yup.object().shape({
+    name: yup.string().required('Problem name is required'),
+    link: yup.string().url('Must be a valid URL').required('Problem link is required'),
+    points: yup.string().required('Points are required'),
+    difficulty: yup.string().required('Difficulty is required'),
+    slug: yup.string().required('Slug is required'),
+    lcid: yup.number().min(0, 'Valid LeetCode ID is required').required('LeetCode ID is required')
+});
+
+const contestDetailsSchema = yup.object().shape({
+    name: yup.string().required('Contest name is required'),
+    startTime: yup.string().required('Start time is required'),
+    duration: yup.string().required('Duration is required')
+        .test('is-positive', 'Duration must be positive', value => parseInt(value) > 0),
+    maxParticipants: yup.string().required('Max participants is required')
+        .test('is-positive', 'Max participants must be positive', value => parseInt(value) > 0),
+    visibility: yup.boolean(),
+    problems: yup.array().of(problemSchema)
+        .min(1, 'At least one problem is required')
+});
+
 export default function Page() {
-    const [errors, setErrors] = useState<string[]>([])
+    const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
     const [contestDetails, setContestDetails] = useState<ContestDetails>({
         name: '',
         startTime: '',
@@ -48,46 +76,199 @@ export default function Page() {
         lcid: -1
     })
 
-    const addProblem = () => {
-        if (!newProblem.name || !newProblem.link || !newProblem.points || !newProblem.difficulty || !newProblem.slug || newProblem.lcid === -1) {
-            throw new Error("Please provide all details of problem")
-        } else {
-            console.info("adding new problem to Contest Details")
-            console.log(newProblem)
+    // Validate contest details
+    const validateContestDetails = async () => {
+        try {
+            await contestDetailsSchema.validate(contestDetails, { abortEarly: false });
+            setValidationErrors(prev => ({ ...prev, contestDetails: {} }));
+            return true;
+        } catch (error) {
+            if (error instanceof yup.ValidationError) {
+                const errors: Record<string, string> = {};
+                error.inner.forEach(err => {
+                    if (err.path) {
+                        errors[err.path] = err.message;
+                    }
+                });
+                setValidationErrors(prev => ({ ...prev, contestDetails: errors }));
+            }
+            return false;
+        }
+    }
+
+    // Validate new problem
+    const validateNewProblem = async () => {
+        try {
+            await problemSchema.validate(newProblem, { abortEarly: false });
+            setValidationErrors(prev => ({ ...prev, newProblem: {} }));
+            return true;
+        } catch (error) {
+            if (error instanceof yup.ValidationError) {
+                const errors: Record<string, string> = {};
+                error.inner.forEach(err => {
+                    if (err.path) {
+                        errors[err.path] = err.message;
+                    }
+                });
+                setValidationErrors(prev => ({ ...prev, newProblem: errors }));
+            }
+            return false;
+        }
+    }
+
+    // Delete a problem from the contest
+    const deleteProblem = (lcid: number) => {
+        try {
+            setContestDetails((prev) => ({
+                ...prev,
+                problems: prev.problems.filter(p => p.lcid !== lcid),
+            }));
+            toast.success("Problem deleted successfully");
+        } catch (error) {
+            toast.error("Failed to delete problem");
+            console.error(error);
+        }
+    }
+
+    // Edit mode state
+    const [editMode, setEditMode] = useState(false);
+    const [editingProblemId, setEditingProblemId] = useState<number>(-1);
+
+    // Start editing a problem
+    const startEditProblem = (problem: Problem) => {
+        setNewProblem(problem);
+        setEditMode(true);
+        setEditingProblemId(problem.lcid);
+    }
+
+    // Cancel editing
+    const cancelEdit = () => {
+        setNewProblem({ name: '', link: '', points: '', difficulty: '', slug: '', lcid: -1 });
+        setEditMode(false);
+        setEditingProblemId(-1);
+        setValidationErrors(prev => ({ ...prev, newProblem: {} }));
+    }
+
+    // Update an existing problem
+    const updateProblem = async () => {
+        try {
+            const isValid = await validateNewProblem();
+            if (!isValid) {
+                toast.error("Please fix all validation errors");
+                return;
+            }
+
+            setContestDetails((prev) => ({
+                ...prev,
+                problems: prev.problems.map(p =>
+                    p.lcid === editingProblemId ? newProblem : p
+                ),
+            }));
+
+            setNewProblem({ name: '', link: '', points: '', difficulty: '', slug: '', lcid: -1 });
+            setEditMode(false);
+            setEditingProblemId(-1);
+            setValidationErrors(prev => ({ ...prev, newProblem: {} }));
+            toast.success("Problem updated successfully");
+        } catch (error) {
+            toast.error("Failed to update problem");
+            console.error(error);
+        }
+    }
+
+    // Add a new problem
+    const addProblem = async () => {
+        try {
+            const isValid = await validateNewProblem();
+            if (!isValid) {
+                toast.error("Please fix all validation errors");
+                return;
+            }
+
+            // Check for duplicate lcid
+            const isDuplicate = contestDetails.problems.some(p => p.lcid === newProblem.lcid);
+            if (isDuplicate) {
+                toast.error("This problem is already added to the contest");
+                return;
+            }
+
+            console.info("adding new problem to Contest Details");
+            console.log(newProblem);
             setContestDetails((prev) => ({
                 ...prev,
                 problems: [...prev.problems, newProblem],
-            }))
-            setNewProblem({ name: '', link: '', points: '', difficulty: '', slug: '', lcid: -1 })
+            }));
+            setNewProblem({ name: '', link: '', points: '', difficulty: '', slug: '', lcid: -1 });
+            setValidationErrors(prev => ({ ...prev, newProblem: {} }));
+            toast.success("Problem added successfully");
+        } catch (error) {
+            toast.error("Failed to add problem");
+            console.error(error);
         }
     }
 
     const fetchProblem = async () => {
         if (!newProblem.name) {
-            console.log("Please provide name of problem")
+            toast.error("Please provide name of problem");
             return;
         }
         try {
             toast.promise(getQuestion(newProblem.name), {
                 loading: 'Getting Problem from Leetcode',
-                success: 'Done',
             }).then((problem) => {
+                // Check if the problem already exists in the contest
+                const lcid = problem?.questionId ? parseInt(problem?.questionId) : -1;
+
+                if (!editMode && contestDetails.problems.some(p => p.lcid === lcid)) {
+                    toast.error("This problem is already added to the contest");
+                    return;
+                }else{
+                    toast.success("Done")
+                }
+
                 setNewProblem({
                     ...newProblem,
                     difficulty: problem?.difficulty || 'Unknown',
                     slug: problem?.titleSlug || '',
                     name: problem?.title || '',
-                    lcid: problem?.questionId ? parseInt(problem?.questionId) : -1,
+                    lcid: lcid,
                     link: `https://leetcode.com/problems/${problem?.titleSlug}/description/`
-                })
+                });
             }).catch((error) => {
-                toast.error(error.message)
-            })
+                toast.error(error.message);
+            });
         } catch (error) {
-            console.error('Error fetching problem difficulty:', error)
+            console.error('Error fetching problem difficulty:', error);
+            toast.error("Failed to fetch problem from LeetCode");
         }
     }
 
+    const createContest = async () => {
+        try {
+            const isValid = await validateContestDetails();
+            if (!isValid) {
+                toast.error("Please fix all validation errors");
+                return;
+            }
+
+            // Here you would typically submit the contest to your backend
+            toast.success("Contest created successfully!");
+            console.log("Contest details:", contestDetails);
+
+            // Clear form after successful submission
+            // setContestDetails({
+            //     name: '',
+            //     startTime: '',
+            //     duration: '',
+            //     maxParticipants: '',
+            //     visibility: false,
+            //     problems: [],
+            // });
+        } catch (error) {
+            toast.error("Failed to create contest");
+            console.error(error);
+        }
+    }
     //Storing contest details in localStorage
     useEffect(() => {
         console.log("Storing contest details in localStorage")
@@ -140,8 +321,14 @@ export default function Page() {
                                             })
                                         }
                                         placeholder="Weekly Contest 1"
-                                        className="bg-input outline-none text-sm rounded-md py-2 px-4 w-full"
+                                        className={`bg-input outline-none text-sm rounded-md py-2 px-4 w-full ${validationErrors.contestDetails?.name ? 'border border-red-500' : ''}`}
                                     />
+                                    {validationErrors.contestDetails?.name && (
+                                        <div className="text-red-500 text-xs flex items-center gap-1 mt-1">
+                                            <AlertCircle size={12} />
+                                            {validationErrors.contestDetails.name}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="flex gap-4">
@@ -158,8 +345,14 @@ export default function Page() {
                                                     startTime: e.target.value,
                                                 })
                                             }
-                                            className="bg-input outline-none text-sm rounded-md py-2 px-4 w-full"
+                                            className={`bg-input outline-none text-sm rounded-md py-2 px-4 w-full ${validationErrors.contestDetails?.startTime ? 'border border-red-500' : ''}`}
                                         />
+                                        {validationErrors.contestDetails?.startTime && (
+                                            <div className="text-red-500 text-xs flex items-center gap-1 mt-1">
+                                                <AlertCircle size={12} />
+                                                {validationErrors.contestDetails.startTime}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="relative flex flex-col items-start gap-2">
                                         <label className="text-muted-foreground text-sm">
@@ -175,9 +368,15 @@ export default function Page() {
                                                 })
                                             }
                                             placeholder="60"
-                                            className="bg-input outline-none w-64 pl-10 text-sm rounded-md py-2 px-4"
+                                            className={`bg-input outline-none w-64 pl-10 text-sm rounded-md py-2 px-4 ${validationErrors.contestDetails?.duration ? 'border border-red-500' : ''}`}
                                         />
                                         <Timer className="size-5 text-muted-foreground absolute top-[55%] left-2" />
+                                        {validationErrors.contestDetails?.duration && (
+                                            <div className="text-red-500 text-xs flex items-center gap-1 mt-1">
+                                                <AlertCircle size={12} />
+                                                {validationErrors.contestDetails.duration}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -195,10 +394,25 @@ export default function Page() {
                                             })
                                         }
                                         placeholder="100"
-                                        className="bg-input outline-none text-sm rounded-md py-2 px-4 w-full"
+                                        className={`bg-input outline-none text-sm rounded-md py-2 px-4 w-full ${validationErrors.contestDetails?.maxParticipants ? 'border border-red-500' : ''}`}
                                     />
+                                    {validationErrors.contestDetails?.maxParticipants && (
+                                        <div className="text-red-500 text-xs flex items-center gap-1 mt-1">
+                                            <AlertCircle size={12} />
+                                            {validationErrors.contestDetails.maxParticipants}
+                                        </div>
+                                    )}
                                 </div>
-                                <Button disabled className="w-fit bg-accent ring/50 hover:ring-0 mt-8">
+                                {validationErrors.contestDetails?.problems && (
+                                    <div className="text-red-500 text-xs flex items-center gap-1 mt-1">
+                                        <AlertCircle size={12} />
+                                        {validationErrors.contestDetails.problems}
+                                    </div>
+                                )}
+                                <Button
+                                    onClick={() => validateContestDetails()}
+                                    className="w-fit bg-accent ring/50 hover:ring-0 mt-8"
+                                >
                                     Continue
                                 </Button>
                             </div>
@@ -218,8 +432,14 @@ export default function Page() {
                                             setNewProblem({ ...newProblem, name: e.target.value })
                                         }
                                         placeholder="Problem Name"
-                                        className="bg-input outline-none text-sm rounded-md py-2 px-4 w-full"
+                                        className={`bg-input outline-none text-sm rounded-md py-2 px-4 w-full ${validationErrors.newProblem?.name ? 'border border-red-500' : ''}`}
                                     />
+                                    {validationErrors.newProblem?.name && (
+                                        <div className="text-red-500 text-xs flex items-center gap-1 mt-1">
+                                            <AlertCircle size={12} />
+                                            {validationErrors.newProblem.name}
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="flex gap-4">
                                     <div className="flex relative flex-1 flex-col items-start gap-2">
@@ -227,11 +447,12 @@ export default function Page() {
                                         <input
                                             type="url"
                                             value={newProblem.link}
+                                            disabled
                                             onChange={(e) =>
                                                 setNewProblem({ ...newProblem, link: e.target.value })
                                             }
                                             placeholder="https://leetcode.com/..."
-                                            className="bg-input outline-none text-sm rounded-md py-2 px-4 w-full"
+                                            className={`bg-input outline-none text-sm rounded-md py-2 px-4 w-full ${validationErrors.newProblem?.link ? 'border border-red-500' : ''}`}
                                         />
                                         {
                                             newProblem.link ? (
@@ -252,20 +473,34 @@ export default function Page() {
                                                 </span>
                                             )
                                         }
-
+                                        {validationErrors.newProblem?.link && (
+                                            <div className="text-red-500 text-xs flex items-center gap-1 mt-1">
+                                                <AlertCircle size={12} />
+                                                {validationErrors.newProblem.link}
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="flex flex-col items-start gap-2 relative">
+                                    <div className="flex flex-col items-start gap-2">
                                         <label className="text-muted-foreground text-sm">Points</label>
-                                        <input
-                                            type="number"
-                                            value={newProblem.points}
-                                            onChange={(e) =>
-                                                setNewProblem({ ...newProblem, points: e.target.value })
-                                            }
-                                            placeholder="0"
-                                            className="bg-input outline-none text-sm rounded-md py-2 px-4 w-64 pl-10"
-                                        />
-                                        <PiMedalMilitaryBold className="absolute left-2 top-[55%] size-5 text-primary" />
+                                        <div className={`flex items-center gap-2 rounded-md py-2 px-4 bg-input ${validationErrors.newProblem?.points ? 'border border-red-500' : ''}`}>
+                                            <PiMedalMilitaryBold className="size-5 text-primary" />
+                                            <input
+                                                type="number"
+                                                value={newProblem.points}
+                                                onChange={(e) =>
+                                                    setNewProblem({ ...newProblem, points: e.target.value })
+                                                }
+                                                placeholder="0"
+                                                className={`bg-input outline-none text-sm`}
+                                            />
+
+                                        </div>
+                                        {validationErrors.newProblem?.points && (
+                                            <div className="text-red-500 text-xs flex items-center gap-1 mt-1">
+                                                <AlertCircle size={12} />
+                                                {validationErrors.newProblem.points}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-start gap-2">
@@ -301,15 +536,33 @@ export default function Page() {
                                     <Button
                                         className="w-fit mt-4 bg-color-3 hover:bg-color-3/80 text-black"
                                         onClick={fetchProblem}
+                                        disabled={editMode}
                                     >
                                         Get from Leetcode
                                     </Button>
-                                    <Button
-                                        className="w-fit mt-4 bg-accent hover:bg-accent/80 text-white"
-                                        onClick={addProblem}
-                                    >
-                                        <span className="mr-2 text-lg">+</span> Add Problem
-                                    </Button>
+                                    {editMode ? (
+                                        <>
+                                            <Button
+                                                className="w-fit mt-4 bg-accent hover:bg-accent/80 text-white"
+                                                onClick={updateProblem}
+                                            >
+                                                <Pencil size={16} className="mr-2" /> Update Problem
+                                            </Button>
+                                            <Button
+                                                className="w-fit mt-4 bg-red-600 hover:bg-red-700 text-white"
+                                                onClick={cancelEdit}
+                                            >
+                                                Cancel
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <Button
+                                            className="w-fit mt-4 bg-accent hover:bg-accent/80 text-white"
+                                            onClick={addProblem}
+                                        >
+                                            <span className="mr-2 text-lg">+</span> Add Problem
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                         </TabsContent>
@@ -332,7 +585,10 @@ export default function Page() {
                                 Public contests are visible to all users and can be accessed by{' '}
                                 <span className="text-primary">anyone</span> with a link.
                             </p>
-                            <Button className="w-fit bg-accent mt-8 absolute right-0">
+                            <Button
+                                onClick={createContest}
+                                className="w-fit bg-accent mt-8 absolute right-0"
+                            >
                                 Create Contest
                             </Button>
                         </TabsContent>
@@ -384,16 +640,32 @@ export default function Page() {
                         <ul className="list-disc">
                             {contestDetails.problems.map((p, index) => (
                                 <li key={index}
-                                    className="flex  mb-2 items-center group bg-accent justify-between rounded-md py-2 px-4 gap-2"
+                                    className="flex mb-2 items-center group bg-accent justify-between rounded-md py-2 px-4 gap-2"
                                 >
                                     <p>{p.name}</p>
                                     <div className="flex items-center gap-12 justify-between">
                                         <div className="flex items-center gap-2 group-hover:opacity-100 transition-opacity duration-200 opacity-0">
-                                            <button className='bg-accent p-2 transition-all duration-300 hover:bg-background rounded text-white'><Pencil size={16} /></button>
-                                            <button className='bg-accent p-2 transition-all duration-300 hover:bg-red-900/80 rounded'><Trash2 size={16} color='red' /></button>
+                                            <button
+                                                className='bg-accent p-2 transition-all duration-300 hover:bg-background rounded text-white'
+                                                onClick={() => {
+                                                    // Switch to Problems tab
+                                                    const problemsTab = document.querySelector('[value="Problems"]') as HTMLElement;
+                                                    if (problemsTab) problemsTab.click();
+                                                    // Start editing
+                                                    startEditProblem(p);
+                                                }}
+                                            >
+                                                <Pencil size={16} />
+                                            </button>
+                                            <button
+                                                className='bg-accent p-2 transition-all duration-300 hover:bg-red-900/80 rounded'
+                                                onClick={() => deleteProblem(p.lcid)}
+                                            >
+                                                <Trash2 size={16} color='red' />
+                                            </button>
                                         </div>
                                         <a
-                                            className=" px-3 py-1 border border-gray-600 rounded-md"
+                                            className="px-3 py-1 border border-gray-600 rounded-md"
                                             href={p.link}
                                             target="_blank"
                                             rel="noreferrer"
