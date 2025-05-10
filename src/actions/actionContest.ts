@@ -16,6 +16,7 @@ export async function addContestToDB(formData: any) {
     };
 
     try {
+        console.log("Creating Contest...", data)
         const res = await db.insert(contest).values(data);
         if (res) {
             console.log('Contest created successfully:', res);

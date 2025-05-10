@@ -4,16 +4,22 @@ import { problem } from "@/db/schema";
 import { db } from "@/db/index";
 
 
-export async function addProblemToDB(formData: typeof problem.$inferInsert[]) {
+export async function addProblemToDB(problems: any) {
     try {
-        console.log(formData);
-        const res = await db.insert(problem).values(formData).onConflictDoNothing();
+        // To resolve leetcode_id and lcid mismatch
+        const formatted = problems.map((problem: any) => ({
+            name: problem.name,
+            link: problem.link,
+            difficulty: problem.difficulty,
+            slug: problem.slug,
+            leetcodeId: Number(problem.lcid),
+        }));
+        const res = await db.insert(problem).values(formatted).onConflictDoNothing();
         if (res) {
-            console.log('Problem added successfully:', res);
             return { success: true };
         }
     } catch (error) {
-        console.error('Error adding problem:', error);
+        console.error(error);
         return { success: false, error: 'Failed to add problem' };
     }
 }

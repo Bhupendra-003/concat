@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react'
 import CreaterHeader from '@/components/CreaterHeader'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import toast from 'react-hot-toast'
-import { getQuestion } from '@/actions/actionLeetQuery'
 import {
     ContestDetailsForm,
     ProblemForm,
@@ -18,6 +17,7 @@ import {
     validateNewProblem
 } from './validation'
 import { addContestToDB } from '@/actions/actionContest'
+import { addProblemToDB } from '@/actions/actionProblems'
 
 export default function Page() {
     const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
@@ -38,7 +38,7 @@ export default function Page() {
         slug: '',
         lcid: -1
     })
-    
+
     // Edit mode state
     const [editMode, setEditMode] = useState(false);
     const [editingProblemId, setEditingProblemId] = useState<number>(-1);
@@ -80,14 +80,14 @@ export default function Page() {
                 toast.error("Please fix all validation errors");
                 return;
             }
-            
+
             setContestDetails((prev) => ({
                 ...prev,
-                problems: prev.problems.map(p => 
+                problems: prev.problems.map(p =>
                     p.lcid === editingProblemId ? newProblem : p
                 ),
             }));
-            
+
             setNewProblem({ name: '', link: '', points: '', difficulty: '', slug: '', lcid: -1 });
             setEditMode(false);
             setEditingProblemId(-1);
@@ -107,14 +107,14 @@ export default function Page() {
                 toast.error("Please fix all validation errors");
                 return;
             }
-            
+
             // Check for duplicate lcid
             const isDuplicate = contestDetails.problems.some(p => p.lcid === newProblem.lcid);
             if (isDuplicate) {
                 toast.error("This problem is already added to the contest");
                 return;
             }
-            
+
             console.info("adding new problem to Contest Details");
             console.log(newProblem);
             setContestDetails((prev) => ({
@@ -129,6 +129,27 @@ export default function Page() {
             console.error(error);
         }
     }
+    const handleCreateContest = async () => {
+        try {
+            // 1. Add problems (toast-tracked)
+            const problemRes = await addProblemToDB(contestDetails.problems);
+            if (!problemRes?.success) {
+                toast.error("Failed to create contest");
+                return;
+            }else{
+                //2. Add contest
+                const contestRes = await addContestToDB(contestDetails);
+                if (!contestRes?.success) {
+                    toast.error("Failed to create contest");
+                    return;
+                }
+            }
+
+        } catch (err) {
+            console.error("Unexpected error in contest creation:", err);
+        }
+    };
+
 
     const handleSubmit = async () => {
         try {
@@ -137,24 +158,23 @@ export default function Page() {
                 toast.error("Please fix all validation errors");
                 return;
             }
-            
-            // Here you would typically submit the contest to your backend
-            
+
             console.log("Contest details:", contestDetails);
-            toast.promise(addContestToDB(contestDetails), {
+            toast.promise(handleCreateContest(), {
                 loading: 'Creating contest...',
                 success: 'Contest created successfully',
-                error: 'Failed to create contest'
-            })
+                error: 'Failed to create contest',
+            });
+
             // Clear form after successful submission
-            // setContestDetails({
-            //     name: '',
-            //     startTime: '',
-            //     duration: '',
-            //     maxParticipants: '',
-            //     visibility: false,
-            //     problems: [],
-            // });
+            setContestDetails({
+                name: '',
+                startTime: '',
+                duration: '',
+                maxParticipants: '',
+                visibility: false,
+                problems: [],
+            });
         } catch (error) {
             toast.error("Failed to create contest");
             console.error(error);
@@ -199,7 +219,7 @@ export default function Page() {
 
                         {/* Details Tab */}
                         <TabsContent className="w-full py-8" value="Details">
-                            <ContestDetailsForm 
+                            <ContestDetailsForm
                                 contestDetails={contestDetails}
                                 setContestDetails={setContestDetails}
                                 validationErrors={validationErrors}
@@ -209,7 +229,7 @@ export default function Page() {
 
                         {/* Problems Tab */}
                         <TabsContent className="w-full py-8" value="Problems">
-                            <ProblemForm 
+                            <ProblemForm
                                 newProblem={newProblem}
                                 setNewProblem={setNewProblem}
                                 validationErrors={validationErrors}
@@ -224,7 +244,7 @@ export default function Page() {
 
                         {/* Visibility Tab */}
                         <TabsContent className="relative w-fit py-8 px-15" value="Visibility">
-                            <VisibilitySettings 
+                            <VisibilitySettings
                                 contestDetails={contestDetails}
                                 setContestDetails={setContestDetails}
                                 handleSubmit={handleSubmit}
@@ -234,7 +254,7 @@ export default function Page() {
                 </div>
 
                 {/* Right Side - Live Preview */}
-                <ContestPreview 
+                <ContestPreview
                     contestDetails={contestDetails}
                     onEditProblem={startEditProblem}
                     onDeleteProblem={deleteProblem}
