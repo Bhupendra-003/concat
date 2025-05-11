@@ -18,8 +18,10 @@ import {
 } from './validation'
 import { addContestToDB, addProblemToContestJunctionTable } from '@/actions/actionNeonDb'
 import { addProblemToDB } from '@/actions/actionNeonDb'
+import { useRouter } from 'next/navigation'
 
 export default function Page() {
+    const router = useRouter();
     const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
     const [contestDetails, setContestDetails] = useState<ContestDetails>({
         name: '',
@@ -184,9 +186,20 @@ export default function Page() {
                     error: (err) => (`${err.message.split(":")[1]}`),
                 }
             );
+            router.push('/creater/dashboard');
+            localStorage.removeItem('contestDetails');
+            setContestDetails({
+                name: '',
+                startTime: '',
+                duration: '',
+                maxParticipants: '',
+                problems: [],
+                visibility: true
+            });
+            // setValidationErrors({});
 
         } catch (error: any) {
-            toast.error(error);
+            toast.error(error.message);
         }
     }
 

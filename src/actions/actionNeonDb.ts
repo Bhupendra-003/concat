@@ -1,6 +1,7 @@
 "use server"
 import { problem, contest, contestProblems } from "@/db/schema";
 import { db } from "@/db/index";
+import { eq } from "drizzle-orm";
 
 
 export async function addProblemToDB(problems: any) {
@@ -88,5 +89,18 @@ export async function addProblemToContestJunctionTable(formData: any[]) {
     } catch (error) {
         console.error('Error adding problems to contest junction table:', error);
         return { success: false, error: 'Failed to add problems to contest junction table' };
+    }
+}
+
+export async function deleteContest(contestId: string) {
+    try {
+        const res = await db.delete(contest).where(eq(contest.id, contestId));
+        if (res) {
+            console.log('Contest deleted successfully:', res);
+            return { success: true, error: null };
+        }
+    } catch (error) {
+        console.error('Error deleting contest from DB:', error);
+        return { success: false, error: 'Failed to delete contest' };
     }
 }

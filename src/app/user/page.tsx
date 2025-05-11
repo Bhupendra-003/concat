@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import Header from '../../components/UserHeader';
+import Header from '@/components/UserHeader';
 import Contest from '@/components/tabs/Contest';
 import { authClient } from "@/lib/auth-client";
 import { useRouter } from 'next/navigation';

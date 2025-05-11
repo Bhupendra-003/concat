@@ -4,12 +4,28 @@ import CreaterHeader from '@/components/CreaterHeader';
 import { Button } from '@/components/ui/button';
 import { MdAdd } from "react-icons/md";
 import { useRouter } from 'next/navigation';
-import { getContest } from '@/actions/actionContest';
+import { getContest, deleteContest } from '@/actions/actionNeonDb';
 import { toast } from 'react-hot-toast';
 import { Contest } from '@/db/types';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Users, Clock3 } from "lucide-react";
+import { Calendar, Clock3, EllipsisVertical, Trash2 } from "lucide-react";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
+
 
 function Page() {
     const router = useRouter();
@@ -20,20 +36,34 @@ function Page() {
             loading: 'Loading contests...',
             success: 'Contests loaded successfully',
             error: 'Failed to load contests'
-        }).then(res => {
+        }, {id: 'contestList'}).then(res => {
             const loadedContests = res?.data || [];
             setContests(loadedContests);
         });
     }, []);
 
+    const handleDeleteContest = (contestId: string) => {
+        console.log('Deleting contest...', contestId);
+        toast.promise(deleteContest(contestId), {
+            loading: 'Deleting contest...',
+            success: 'Contest deleted successfully',
+            error: 'Failed to delete contest'
+        }).then(res => {
+            if (res?.success) {
+                const updatedContests = contests.filter(c => c.id !== contestId);
+                setContests(updatedContests);
+            }
+        });
+    };
+
     return (
         <div className="bg-background px-10 sm:px-16 pt-6">
             <CreaterHeader />
-            <div className="flex justify-between items-center mb-6 mt-6">
+            <div className="flex justify-start items-center gap-8 mb-6 mt-6">
                 <h1 className="text-4xl font-bold">Contests</h1>
-                <Button onClick={() => router.push('creater/create-contest')} className="flex items-center gap-2">
+                <Button onClick={() => router.push('/creater/create-contest')} className="flex ring-1 ring-white font-mono bg-transparent text-white hover:bg-white/10 items-center gap-2">
                     <MdAdd fontWeight="bold" className="text-lg" />
-                    Create Contest
+                    Create new Contest
                 </Button>
             </div>
 
@@ -90,7 +120,7 @@ function Page() {
                                 </div>
                             </div>
 
-                            {/* Actions */} 
+                            {/* Actions */}
                             <div className="flex flex-wrap gap-3 mt-2">
                                 <Button variant="outline" className="text-sm">
                                     View Submissions
@@ -98,6 +128,40 @@ function Page() {
                                 <Button variant="outline" className="text-sm">
                                     Manage Participants
                                 </Button>
+                                <Button variant="outline" className="text-sm">
+                                    Edit Contest
+                                </Button>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="ghost" className="text-sm">
+                                            <EllipsisVertical />
+                                        </Button>
+                                    </PopoverTrigger>
+
+                                    <PopoverContent className="w-fit p-2 mt-7">
+                                        <Dialog>
+                                            <DialogTrigger asChild>
+                                                <div className="flex items-center gap-2 text-sm text-red-500 cursor-pointer hover:text-red-600">
+                                                    <Trash2 size={16} />
+                                                    <span>Delete Contest</span>
+                                                </div>
+                                            </DialogTrigger>
+
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                    <DialogTitle>Are you absolutely sure?</DialogTitle>
+                                                    <DialogDescription>
+                                                        This action cannot be undone. This will permanently delete the contest and remove contest data from our servers.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <DialogFooter>
+                                                    <DialogClose onClick={() => handleDeleteContest(c.id)} className="text-red-500 px-2">Delete</DialogClose>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
+                                    </PopoverContent>
+                                </Popover>
+
                             </div>
                         </div>
                     </Card>
@@ -108,3 +172,5 @@ function Page() {
 }
 
 export default Page;
+
+
