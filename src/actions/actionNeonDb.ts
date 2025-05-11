@@ -1,9 +1,6 @@
 "use server"
-
 import { problem, contest, contestProblems } from "@/db/schema";
 import { db } from "@/db/index";
-import { Contest } from "@/db/types";
-import { dateDuration } from "drizzle-orm/gel-core";
 
 
 export async function addProblemToDB(problems: any) {
@@ -39,14 +36,17 @@ export async function addContestToDB(formData: any) {
     try {
         // Inserting contest into contest table
         console.log("Creating Contest...", data)
-        const contestRes = await db.insert(contest).values(data).onConflictDoNothing().returning();
+        const contestRes = await db.insert(contest).values(data).returning();
         if (contestRes) {
             console.log('Contest created successfully:', contestRes[0].id);
             return { success: true, res: contestRes };
         }
 
-    } catch (error) {
-        console.error('Error creating contest:', error);
+    } catch (error: any) {
+        console.log('Error inserting contest in DB:', error);
+        if(error.code === '23505'){
+            return { success: false, error: 'Contest name already exists' };
+        }
         return { success: false, error: 'Failed to create contest' };
     }
 
@@ -61,7 +61,7 @@ export async function getContest() {
             return { success: true, data: res };
         }
     } catch (error) {
-        console.error('Error fetching contest:', error);
+        console.error('Error fetching contest from DB:', error);
         return { success: false, error: 'Failed to fetch contest' };
     }
 }

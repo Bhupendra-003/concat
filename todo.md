@@ -2,8 +2,6 @@
 
 ### TODO
 - In auth make search query for views to remember last view
-- Create Contest button with open on click and write logic 
-- Unify interfaces into types.ts file 
 
 ### System
 - added authentication ✅
@@ -26,6 +24,7 @@
 - contest page ✅
 - contest being stored and fetched ✅
 - problems being stored and fetched ✅
+- Realtion between contest and problems being stored ✅
 
 ## Tips
 - If want to migrate schema, use `drizzle-kit push` but if giving error, drop schema first from neon console.
@@ -41,3 +40,9 @@
 
   Key takeaway:
   Always ensure the property names in your insert/update objects match the field names in your ORM/model, not necessarily the raw database column names.
+---
+- Problem: Duplicate Entries in Contest Table creating problem
+- Solution: Added Contest Index (auto increment) now name can be same but index will be different.
+--- 
+- Problem: But problems table has `onConflictDoNothing()` so it will not return id when the problems exits, because it will not insert any data, and since we have no id, we can insert realtion in problem jucntion table.
+- Solution: 

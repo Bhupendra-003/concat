@@ -139,7 +139,7 @@ export default function Page() {
                 //2. Add contest
                 const contestRes = await addContestToDB(contestDetails);
                 if (!contestRes?.success) {
-                    throw new Error("Failed to add contest");
+                    throw new Error(contestRes?.error);
                 }else{
                     // Add problem in and contest in junction table
                     console.info("adding problem in and contest in junction table");
@@ -158,9 +158,9 @@ export default function Page() {
                 }
             }
 
-        } catch (err) {
+        } catch (err: any) {
             console.error("Unexpected error in contest creation:", err);
-            throw new Error(err as string);
+            throw new Error(err);
         }
     };
 
@@ -181,13 +181,12 @@ export default function Page() {
                 {
                     loading: 'Creating contest...',
                     success: 'Contest created successfully',
-                    error: (err) => (`${err}`),
+                    error: (err) => (`${err.message.split(":")[1]}`),
                 }
             );
 
-        } catch (error) {
-            toast.error("Failed to create contest");
-            console.error(error);
+        } catch (error: any) {
+            toast.error(error);
         }
     }
 

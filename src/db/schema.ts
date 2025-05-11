@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { pgTable, text, timestamp, boolean, integer, primaryKey, uuid, index } from "drizzle-orm/pg-core";
 
 // User table
@@ -58,7 +59,8 @@ export const verification = pgTable("verification", {
 // Contest table (no tags or problems array)
 export const contest = pgTable("contest", {
     id: uuid('id').defaultRandom().primaryKey(),
-    name: text('name').notNull().unique(),
+    contest_index: integer("contest_index").unique().notNull().default(sql`nextval('contest_contest_index_seq')`),
+    name: text('name').notNull(),
     startTime: timestamp('start_time').notNull(),
     duration: integer('duration').notNull(),
     questions: integer('questions').notNull(),
