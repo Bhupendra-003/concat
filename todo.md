@@ -1,7 +1,7 @@
 # TODO and Progress
 
 ### TODO
-- In auth make search query for views to remember last view
+- Handle the problem where the problem already exists in the database, so no id being returned and we can't insert it in the contest-problems junction table.
 
 ### System
 - added authentication ✅
@@ -9,6 +9,7 @@
 - added session check in dashboard and auth page ✅
 - added sign in and sign up functionality ✅
 - added sign out functionality ✅
+- added landing page ✅
 - added google sign in ✅
 
 
@@ -25,6 +26,7 @@
 - contest being stored and fetched ✅
 - problems being stored and fetched ✅
 - Realtion between contest and problems being stored ✅
+- Handled the problem where the problem and contest already exists in the database ✅
 
 ## Tips
 - If want to migrate schema, use `drizzle-kit push` but if giving error, drop schema first from neon console.
@@ -44,5 +46,5 @@
 - Problem: Duplicate Entries in Contest Table creating problem
 - Solution: Added Contest Index (auto increment) now name can be same but index will be different.
 --- 
-- Problem: But problems table has `onConflictDoNothing()` so it will not return id when the problems exits, because it will not insert any data, and since we have no id, we can insert realtion in problem jucntion table.
-- Solution: 
+- Problem: But problems table has `onConflictDoNothing()` so it will not return id when the problems exits, because it will not insert any data, and since we have no id, we can't insert realtion in problem jucntion table because it needs problem id to insert.
+- Solution: On conflict I am updating the problem slug with same value using `onConflictDoUpdate()`, its still an update for Postgres but it will return id, so i am getting id even if it is a conflict by updating. a

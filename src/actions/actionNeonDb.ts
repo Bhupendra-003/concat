@@ -13,7 +13,12 @@ export async function addProblemToDB(problems: any) {
             slug: problem.slug,
             leetcodeId: Number(problem.lcid),
         }));
-        const res = await db.insert(problem).values(formatted).onConflictDoNothing().returning();
+        const res = await db.insert(problem).values(formatted).onConflictDoUpdate({
+            target: problem.leetcodeId,
+            set: {
+                slug: problem.slug,
+            }
+        }).returning();
         if (res) {
             return { success: true, res: res };
         }
