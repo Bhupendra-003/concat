@@ -58,7 +58,7 @@ export const verification = pgTable("verification", {
 // Contest table (no tags or problems array)
 export const contest = pgTable("contest", {
     id: uuid('id').defaultRandom().primaryKey(),
-    name: text('name').notNull(),
+    name: text('name').notNull().unique(),
     startTime: timestamp('start_time').notNull(),
     duration: integer('duration').notNull(),
     questions: integer('questions').notNull(),

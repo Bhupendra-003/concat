@@ -16,8 +16,8 @@ import {
     validateContestDetails,
     validateNewProblem
 } from './validation'
-import { addContestToDB } from '@/actions/actionContest'
-import { addProblemToDB } from '@/actions/actionProblems'
+import { addContestToDB, addProblemToContestJunctionTable } from '@/actions/actionNeonDb'
+import { addProblemToDB } from '@/actions/actionNeonDb'
 
 export default function Page() {
     const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
@@ -134,19 +134,33 @@ export default function Page() {
             // 1. Add problems (toast-tracked)
             const problemRes = await addProblemToDB(contestDetails.problems);
             if (!problemRes?.success) {
-                toast.error("Failed to create contest");
-                return;
-            }else{
+                throw new Error("Failed to add problems");
+            } else {
                 //2. Add contest
                 const contestRes = await addContestToDB(contestDetails);
                 if (!contestRes?.success) {
-                    toast.error("Failed to create contest");
-                    return;
+                    throw new Error("Failed to add contest");
+                }else{
+                    // Add problem in and contest in junction table
+                    console.info("adding problem in and contest in junction table");
+                    console.log("contestRes",contestRes?.res?.[0].id);
+                    console.log("problemRes",problemRes?.res?.[0].id);
+
+                    const formatted = contestDetails.problems.map((problem: any, index: number) => ({
+                        contestId: contestRes?.res?.[0].id,
+                        problemId: problemRes?.res?.[index].id,
+                        points: problem.points,
+                    }));
+                    const problemJunctionRes = await addProblemToContestJunctionTable(formatted);
+                    if (!problemJunctionRes?.success) {
+                        throw new Error("Failed to add problem to contest junction table");
+                    }
                 }
             }
 
         } catch (err) {
             console.error("Unexpected error in contest creation:", err);
+            throw new Error(err as string);
         }
     };
 
@@ -160,26 +174,23 @@ export default function Page() {
             }
 
             console.log("Contest details:", contestDetails);
-            toast.promise(handleCreateContest(), {
-                loading: 'Creating contest...',
-                success: 'Contest created successfully',
-                error: 'Failed to create contest',
-            });
 
-            // Clear form after successful submission
-            setContestDetails({
-                name: '',
-                startTime: '',
-                duration: '',
-                maxParticipants: '',
-                visibility: false,
-                problems: [],
-            });
+            toast.promise(
+                // 👇 wrap the call in an async function to delay execution
+                (async () => await handleCreateContest())(),
+                {
+                    loading: 'Creating contest...',
+                    success: 'Contest created successfully',
+                    error: (err) => (`${err}`),
+                }
+            );
+
         } catch (error) {
             toast.error("Failed to create contest");
             console.error(error);
         }
     }
+
 
     //Storing contest details in localStorage
     useEffect(() => {
