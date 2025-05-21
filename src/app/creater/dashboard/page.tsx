@@ -37,8 +37,31 @@ function Page() {
             success: 'Contests loaded successfully',
             error: 'Failed to load contests'
         }, {id: 'contestList'}).then(res => {
-            const loadedContests = res?.data || [];
-            setContests(loadedContests);
+            if (res?.success && res.data) {
+                // Ensure the status is one of the allowed values
+                const processedContests = res.data.map(contest => {
+                    let validStatus: 'Not Started' | 'Active' | 'Ended' | 'upcoming' | 'Ongoing';
+
+                    // Map the status to one of the allowed values
+                    if (contest.status === 'Not Started' || contest.status === 'Active' ||
+                        contest.status === 'Ended' || contest.status === 'upcoming' ||
+                        contest.status === 'Ongoing') {
+                        validStatus = contest.status as 'Not Started' | 'Active' | 'Ended' | 'upcoming' | 'Ongoing';
+                    } else {
+                        // Default to 'Not Started' if status is not recognized
+                        validStatus = 'Not Started';
+                    }
+
+                    return {
+                        ...contest,
+                        status: validStatus
+                    };
+                });
+
+                setContests(processedContests);
+            } else {
+                setContests([]);
+            }
         });
     }, []);
 
@@ -81,7 +104,11 @@ function Page() {
                                         Contest ID: {c.id}
                                     </p>
                                 </div>
-                                <Badge variant="outline" className={`text-sm border px-2 ${c.status === 'Not Started' ? 'text-yellow-600 border-yellow-600' : c.status === 'Ongoing' ? 'text-green-600 border-green-600' : 'text-zinc-500 border-zinc-500'}`}>
+                                <Badge variant="outline" className={`text-sm border px-2 ${
+                                    c.status === 'Not Started' || c.status === 'upcoming' ? 'text-yellow-600 border-yellow-600' :
+                                    c.status === 'Active' || c.status === 'Ongoing' ? 'text-green-600 border-green-600' :
+                                    'text-zinc-500 border-zinc-500'
+                                }`}>
                                     {c.status}
                                 </Badge>
                             </div>

@@ -23,7 +23,7 @@ export default function AuthForm() {
             setSessionLoading(true);
             const { data: session, error: sessionError } = await authClient.getSession();
             if (session?.user) {
-                router.push('/dashboard');
+                router.push('/user');
             } else {
                 setSessionLoading(false); // session checked, no user
             }

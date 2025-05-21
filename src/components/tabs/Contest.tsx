@@ -1,8 +1,9 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Clock, Users, Award, Calendar } from 'lucide-react';
 import Button from '../Button';
 import Link from 'next/link';
+import { getContest } from '@/actions/actionNeonDb';
 interface Contest {
     id: string;
     name: string;
@@ -10,40 +11,72 @@ interface Contest {
     endTime: string;
     participants: number;
     difficulty: 'Easy' | 'Medium' | 'Hard';
-    status: 'Active' | 'Upcoming' | 'Ended';
+    status: 'Not Started' | 'Active' | 'Ended';
 }
 
 function Contest() {
-    const [activeTab, setActiveTab] = useState<'Active' | 'Upcoming' | 'Ended'>('Active');
-    const contests: Contest[] = [
-        {
-            id: "c1",
-            name: "Weekly Algorithm Challenge",
-            startTime: "2025-04-20T10:00:00",
-            endTime: "2025-04-23T10:00:00",
-            participants: 358,
-            difficulty: "Medium",
-            status: "Active"
-        },
-        {
-            id: "c2",
-            name: "Data Structures Sprint",
-            startTime: "2025-04-22T14:00:00",
-            endTime: "2025-04-24T14:00:00",
-            participants: 124,
-            difficulty: "Easy",
-            status: "Upcoming"
-        },
-        {
-            id: "c3",
-            name: "Frontend Masters Challenge",
-            startTime: "2025-04-18T09:00:00",
-            endTime: "2025-04-25T23:59:00",
-            participants: 521,
-            difficulty: "Hard",
-            status: "Ended"
-        }
-    ];
+    const [activeTab] = useState<'Active' | 'Upcoming' | 'Ended'>('Active');
+    const [contests, setContests] = useState<Contest[]>([]);
+    useEffect(() => {
+        getContest().then(res => {
+            if (res?.success) {
+                setContests(res.data?.map(contest => {
+                    try {
+                        // Ensure startTime is a valid Date object
+                        const startTime = new Date(contest.startTime);
+
+                        // Calculate endTime based on startTime and duration
+                        const endTime = new Date(startTime.getTime() + contest.duration * 60000);
+
+                        // Check if dates are valid
+                        if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+                            console.error("Invalid date calculation for contest:", contest.id);
+                        }
+
+                        // Ensure status is one of the allowed values
+                        let status: 'Not Started' | 'Active' | 'Ended';
+                        if (contest.status === 'Not Started') {
+                            status = 'Not Started';
+                        } else if (contest.status === 'Active') {
+                            status = 'Active';
+                        } else {
+                            status = 'Ended';
+                        }
+
+                        return {
+                            id: contest.id,
+                            name: contest.name,
+                            startTime: startTime.toISOString(),
+                            endTime: endTime.toISOString(),
+                            participants: contest.participants,
+                            difficulty: 'Medium', // Default since it's not in the DB schema
+                            status: status
+                        };
+                    } catch (error) {
+                        console.error("Error processing contest data:", error, contest);
+                        // Return a fallback object with safe values
+                        // Ensure status is one of the allowed values
+                        let safeStatus: 'Not Started' | 'Active' | 'Ended' = 'Active';
+                        if (contest.status === 'Not Started' || contest.status === 'Active' || contest.status === 'Ended') {
+                            safeStatus = contest.status as 'Not Started' | 'Active' | 'Ended';
+                        }
+
+                        return {
+                            id: contest.id || 'unknown',
+                            name: contest.name || 'Unknown Contest',
+                            startTime: new Date().toISOString(),
+                            endTime: new Date(Date.now() + 3600000).toISOString(), // 1 hour from now as fallback
+                            participants: contest.participants || 0,
+                            difficulty: 'Medium',
+                            status: safeStatus
+                        };
+                    }
+                }) || []);
+            }
+        }).catch(error => {
+            console.error("Failed to fetch contests:", error);
+        });
+    }, []);
 
     // Filter contests based on active tab
     const filteredContests = contests.filter(contest => contest.status === activeTab);
@@ -61,35 +94,39 @@ function Contest() {
 
     // Get time remaining for active contests
     const getTimeRemaining = (endTime: string) => {
-        const end = new Date(endTime).getTime();
-        const now = new Date().getTime();
-        const distance = end - now;
+        try {
+            const end = new Date(endTime).getTime();
 
-        if (distance < 0) return "Ended";
+            // Check if end is a valid number
+            if (isNaN(end)) {
+                console.error("Invalid end time:", endTime);
+                return "Time unavailable";
+            }
 
-        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const now = new Date().getTime();
+            const distance = end - now;
 
-        if (days > 0) return `${days}d ${hours}h remaining`;
-        return `${hours}h ${minutes}m remaining`;
-    };
+            if (distance < 0) return "Ended";
 
-    // Get difficulty color
-    const getDifficultyColor = (difficulty: 'Easy' | 'Medium' | 'Hard') => {
-        switch (difficulty) {
-            case 'Easy': return 'bg-green-500';
-            case 'Medium': return 'bg-yellow-500';
-            case 'Hard': return 'bg-red-500';
-            default: return '';
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+
+            if (days > 0) return `${days}d ${hours}h remaining`;
+            return `${hours}h ${minutes}m remaining`;
+        } catch (error) {
+            console.error("Error calculating time remaining:", error);
+            return "Time unavailable";
         }
     };
 
+
+
     //get badge color
-    const getBadgeColor = (status: 'Active' | 'Upcoming' | 'Ended') => {
+    const getBadgeColor = (status: 'Not Started' | 'Active' | 'Ended') => {
         switch (status) {
-            case 'Active': return 'bg-chart-4';
-            case 'Upcoming': return 'bg-primary-alt';
+            case 'Not Started': return 'bg-chart-4';
+            case 'Active': return 'bg-primary-alt';
             case 'Ended': return 'bg-chart-1';
             default: return '';
         }
@@ -131,7 +168,7 @@ function Contest() {
 
                             <div className="flex gap-3">
                                 {contest.status === "Active" && <Link href={`/contest/${contest.id}`}><Button>View</Button></Link>}
-                                {contest.status === "Upcoming" && <Link href={`/contest/${contest.id}`}><Button>Register</Button></Link>}
+                                {contest.status === "Not Started" && <Link href={`/contest/${contest.id}`}><Button>Register</Button></Link>}
                                 {contest.status === "Ended" && <Button className="opacity-50">Ended</Button>}
                             </div>
                         </div>

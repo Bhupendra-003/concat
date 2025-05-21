@@ -1,7 +1,7 @@
 "use server"
 import { problem, contest, contestProblems } from "@/db/schema";
 import { db } from "@/db/index";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 
 export async function addProblemToDB(problems: any) {
@@ -63,8 +63,23 @@ export async function getContest() {
     try {
         const res = await db.select().from(contest);
         if (res) {
-            console.log('Contest fetched successfully:', res);
+            console.log('Contests fetched successfully:', res);
             return { success: true, data: res };
+        }
+    } catch (error) {
+        console.error('Error fetching contests from DB:', error);
+        return { success: false, error: 'Failed to fetch contests' };
+    }
+}
+
+export async function getContestById(contestId: string) {
+    try {
+        const res = await db.select().from(contest).where(eq(contest.id, contestId));
+        if (res && res.length > 0) {
+            console.log('Contest fetched successfully:', res[0]);
+            return { success: true, data: res[0] };
+        } else {
+            return { success: false, error: 'Contest not found' };
         }
     } catch (error) {
         console.error('Error fetching contest from DB:', error);
@@ -102,5 +117,67 @@ export async function deleteContest(contestId: string) {
     } catch (error) {
         console.error('Error deleting contest from DB:', error);
         return { success: false, error: 'Failed to delete contest' };
+    }
+}
+
+export async function getProblemsByContestId(contestId: string) {
+    try {
+        const res = await db.select().from(contestProblems).where(eq(contestProblems.contestId, contestId));
+        if (res) {
+            console.log('Contest problems fetched successfully:', res);
+            return { success: true, data: res };
+        }
+    } catch (error) {
+        console.error('Error fetching contest problems from DB:', error);
+        return { success: false, error: 'Failed to fetch contest problems' };
+    }
+}
+
+export async function getProblemById(problemId: string) {
+    try {
+        const res = await db.select().from(problem).where(eq(problem.id, problemId));
+        if (res && res.length > 0) {
+            console.log('Problem fetched successfully:', res[0]);
+            return { success: true, data: res[0] };
+        } else {
+            return { success: false, error: 'Problem not found' };
+        }
+    } catch (error) {
+        console.error('Error fetching problem from DB:', error);
+        return { success: false, error: 'Failed to fetch problem' };
+    }
+}
+
+export async function getContestProblemsWithDetails(contestId: string) {
+    try {
+        // First get the contest-problem relationships
+        const contestProblemsRes = await db.select().from(contestProblems)
+            .where(eq(contestProblems.contestId, contestId));
+
+        if (!contestProblemsRes || contestProblemsRes.length === 0) {
+            return { success: true, data: [] };
+        }
+
+        // Get all problem IDs
+        const problemIds = contestProblemsRes.map(cp => cp.problemId);
+
+        // Fetch all problems in one query
+        const problemsRes = await db.select().from(problem)
+            .where(inArray(problem.id, problemIds));
+
+        // Combine the data
+        const result = contestProblemsRes.map(cp => {
+            const problemData = problemsRes.find(p => p.id === cp.problemId);
+            return {
+                ...cp,
+                problem: problemData || null
+            };
+        });
+
+        console.log('Contest problems with details fetched successfully:', result);
+        return { success: true, data: result };
+    } catch (error) {
+        console.error('Error fetching contest problems with details:', error);
+        return { success: false, error: 'Failed to fetch contest problems with details' };
     }
 }

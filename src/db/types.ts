@@ -1,22 +1,34 @@
 
 export interface Contest {
     id: string;
+    contest_index?: number;
     name: string;
     startTime: Date;
     duration: number;
     questions: number;
     maxParticipants: number;
     participants: number;
-    status: string;
+    status: 'Not Started' | 'Active' | 'Ended' | 'upcoming' | 'Ongoing';
     createdAt: Date;
+    updatedAt?: Date;
 }
-export interface Problem {
+export interface ProblemForm {
     id: number;
     name: string;
     link: string;
     points: number;
     difficulty: "Easy" | "Medium" | "Hard" | "";
-    tags: string[];
+}
+export interface Problem {
+    id: string;
+    leetcodeId: number;
+    name: string;
+    slug: string;
+    link: string;
+    points?: number; // Points is in the junction table, not in the problem table
+    difficulty: "Easy" | "Medium" | "Hard" | "";
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 export interface FormData {
     name: string;
@@ -25,6 +37,12 @@ export interface FormData {
     maxParticipants: number;
     problems: Problem[];
     tags: string[];
+}
+
+export interface ContestProblem {
+    contestId: string;
+    problemId: string;
+    points: number;
 }
 
 export interface LeetCodeProblem {
