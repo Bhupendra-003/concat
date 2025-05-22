@@ -65,10 +65,10 @@ export default function userHeader() {
                             <div className="p-2">
                                 <button className="w-full text-left text-sm text-foreground hover:text-primary transition-all duration-200 " onClick={handleLogout}>
                                     {loading ?
-                                        <p className="flex items-center justify-start">
+                                        <div className="flex items-center justify-start">
                                             <Ring2 size="20" stroke="3" strokeLength="0.25" bgOpacity="0.1" speed="0.8" color="var(--primary)" />
-                                            <p className="ml-2 text-foreground">Logging out...</p>
-                                        </p>
+                                            <span className="ml-2 text-foreground">Logging out...</span>
+                                        </div>
                                         : 'Logout'}
                                 </button>
                             </div>

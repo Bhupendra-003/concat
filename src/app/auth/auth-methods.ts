@@ -1,17 +1,20 @@
 "use client";
 import { authClient } from "@/lib/auth-client"; //import the auth client
-export const signUp = async (email: string, password: string, name: string, image: string) => {
+export const signUp = async (email: string, password: string, name: string, image: string = "") => {
     console.log('Signing up...');
     const { data, error } = await authClient.signUp.email({
         email, // user email address
         password, // user password -> min 8 characters by default
-        name, // user display name
+        name: name, // user display name
         image, // User image URL (optional)
-        callbackURL: "/dashboard" // A URL to redirect to after the user verifies their email (optional)
+        callbackURL: "/user", // A URL to redirect to after the user verifies their email (optional)
     });
     if (error) {
         throw error;
     }else{
+        // After successful signup, update the user's username in the database
+        // This would typically be done in a server action or API route
+        // For now, we'll just return the data
         return { data, error };
     }
 }
@@ -21,7 +24,7 @@ export const signIn = async (email: string, password: string) => {
     const { data, error } = await authClient.signIn.email({
         email, // user email address
         password, // user password -> min 8 characters by default
-        callbackURL: "/dashboard" // A URL to redirect to after the user verifies their email (optional)
+        callbackURL: "/user" // A URL to redirect to after the user verifies their email (optional)
     });
     if (error) {
         throw error;

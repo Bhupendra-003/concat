@@ -25,10 +25,33 @@ export async function getRecentSubmissions(username: string): Promise<RecentSubm
         if (!profile) throw new Error("Submissions not found");
         else{
             console.log("Submissions found", profile.recentSubmissionList);
-            return profile.recentSubmissionList!;    
+            return profile.recentSubmissionList!;
         };
     } catch (error) {
         console.error("Error fetching submissions:", error);
+        throw error;
+    }
+}
+
+export async function getLeetCodeUserProfile(username: string) {
+    try {
+        const user = await leetcode.user(username);
+        if (!user) throw new Error("User not found");
+
+        // Extract profile data including real name and avatar
+        const profileData = {
+            username: username,
+            realName: user.matchedUser?.profile?.realName || "",
+            userAvatar: user.matchedUser?.profile?.userAvatar || "",
+            ranking: user.matchedUser?.profile?.ranking,
+            recentSubmissions: user.recentSubmissionList || [],
+            // Add any other relevant profile data
+        };
+
+        console.log("LeetCode profile found:", profileData);
+        return profileData;
+    } catch (error) {
+        console.error("Error fetching LeetCode profile:", error);
         throw error;
     }
 }
