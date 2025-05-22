@@ -25,6 +25,7 @@ interface ProblemDisplay {
     difficulty: 'Easy' | 'Medium' | 'Hard';
     points: number;
     status: 'solved' | 'unsolved';
+    link?: string; // Link to the LeetCode problem
 }
 
 function Page() {
@@ -129,6 +130,69 @@ function Page() {
         return () => clearInterval(timer);
     }, [contest]);
 
+    // Use useCallback to memoize the function and avoid dependency cycles
+    const checkSubmission = useCallback(() => {
+        toast.promise(getRecentSubmissions('Bhupendra045'), {
+            loading: 'Checking Submissions...',
+            success: 'Submissions Checked',
+            error: 'Failed to check submissions'
+        }).then((res) => {
+            console.log("Submissions", res);
+            // Filter for accepted submissions
+            const acceptedSubmissions = res.filter((submission: RecentSubmission) => {
+                return submission.statusDisplay === 'Accepted';
+            });
+            console.log("Accepted Submissions", acceptedSubmissions);
+
+            // Check if any of the accepted submissions match our contest problems
+            if (acceptedSubmissions.length > 0 && problems.length > 0) {
+                // Get today's date in ISO format (YYYY-MM-DD)
+                const today = new Date().toISOString().split('T')[0];
+
+                // Create a new array of problems with updated status
+                const updatedProblems = problems.map(problem => {
+                    // Extract the slug from the problem link
+                    const problemLink = problem.link || '';
+                    const slugMatch = problemLink.match(/\/problems\/([^/]+)\//);
+                    const problemSlug = slugMatch ? slugMatch[1] : '';
+
+                    // Check if this problem has been solved
+                    const isSolved = acceptedSubmissions.some(submission => {
+                        // Check if submission is from today
+                        const submissionDate = new Date(parseInt(submission.timestamp) * 1000).toISOString().split('T')[0];
+                        const isToday = submissionDate === today;
+
+                        // Check if the submission matches this problem's slug
+                        return isToday && submission.titleSlug === problemSlug;
+                    });
+
+                    // Return updated problem with solved status if found
+                    return {
+                        ...problem,
+                        status: isSolved ? 'solved' : problem.status
+                    };
+                });
+
+                // Check if any problem status has changed
+                const hasChanges = updatedProblems.some((problem, index) =>
+                    problem.status !== problems[index].status
+                );
+
+                // Only update state if there are changes
+                if (hasChanges) {
+                    // Update the problems state with the new statuses
+                    setProblems(updatedProblems);
+
+                    // Show success message if any problems were marked as solved
+                    const solvedCount = updatedProblems.filter(p => p.status === 'solved').length;
+                    if (solvedCount > 0) {
+                        toast.success(`Found ${solvedCount} solved problems!`);
+                    }
+                }
+            }
+        });
+    }, [problems]);
+
     // Fetch contest data
     useEffect(() => {
         if (!contestId) return;
@@ -191,6 +255,16 @@ function Page() {
             });
     }, [contestId]);
 
+    // Check for solved problems only when component mounts
+    useEffect(() => {
+        // Only check submissions if we have problems loaded and we're not loading
+        if (problems.length > 0 && !loading) {
+            // Automatically check submissions when component mounts
+            checkSubmission();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [loading]); // Only depend on loading state to avoid infinite loops
+
     // Handle tab click
     const handleTabClick = (tab: TabData) => {
         setSelectedTab(tab);
@@ -238,22 +312,6 @@ function Page() {
             minute: '2-digit'
         });
     };
-
-    const checkSubmission = () => {
-        toast.promise(getRecentSubmissions('Bhupendra045'), {
-            loading: 'Checking Submissions...',
-            success: 'Submissions Checked',
-            error: 'Failed to check submissions'
-        }).then((res) => {
-            console.log("Submissions", res);
-            const filterSubmissions = res.filter((submission: RecentSubmission) => {
-                return submission.statusDisplay === 'Accepted';
-            });
-            console.log("Filtered Submissions", filterSubmissions);
-        });
-
-
-    }
 
     return (
         <div className='min-h-screen bg-background'>
@@ -343,7 +401,7 @@ function Page() {
                                                         className="h-2 bg-primary/10"
                                                     />
                                                 </div>
-                                            )}  
+                                            )}
                                         </div>
                                     </div>
                                 </Card>
@@ -389,9 +447,15 @@ function Page() {
                             {selectedTab.id === 1 && (
                                 problems.length > 0 ? (
                                     <div className="space-y-2">
-                                        <div className='flex justify-between'>
+                                        <div className='flex justify-between items-center'>
                                             <h2 className="text-xl font-semibold mb-4 text-foreground">Contest Problems</h2>
-                                            <span><RotateCw size={20} onClick={checkSubmission} /></span> {/* Refresh button to fetch user submission */}
+                                            <div
+                                                className="p-2 rounded-full hover:bg-primary/10 cursor-pointer transition-colors duration-200"
+                                                title="Check LeetCode submissions"
+                                                onClick={checkSubmission}
+                                            >
+                                                <RotateCw size={20} className="text-primary" />
+                                            </div>
                                         </div>
                                         <Problems problems={problems} />
                                     </div>
