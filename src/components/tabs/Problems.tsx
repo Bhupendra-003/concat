@@ -44,7 +44,7 @@ function Problems({ problems }: { problems: Problem[] }) {
                     key={problem.id}
                     className={`grid grid-cols-12 items-center p-4 ${
                         index % 2 === 0 ? 'bg-background' : 'bg-card/30'
-                    } hover:bg-card/50 transition-colors duration-150`}
+                    } transition-colors duration-150`}
                 >
                     {/* Problem Number */}
                     <div className="col-span-1 text-center font-mono text-muted-foreground">

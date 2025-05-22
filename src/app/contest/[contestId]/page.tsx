@@ -56,6 +56,18 @@ function Page() {
         percentComplete: 0
     });
 
+    // Load hasJoined state from localStorage
+    useEffect(() => {
+        if (contestId) {
+            const hasJoinedKey = `contest_${contestId}_joined`;
+            const savedHasJoined = safeLocalStorage.getItem(hasJoinedKey);
+
+            if (savedHasJoined === 'true') {
+                setHasJoined(true);
+            }
+        }
+    }, [contestId]);
+
     // Function to update participant count
     const handleParticipate = useCallback(async () => {
         if (!contest) return;
@@ -64,6 +76,10 @@ function Page() {
             // In a real app, you would call an API to update the participant count
             // For now, we'll just update the local state
             setHasJoined(true);
+
+            // Save participation status to localStorage
+            safeLocalStorage.setItem(`contest_${contestId}_joined`, 'true');
+
             setContest(prev => {
                 if (!prev) return null;
                 return {
@@ -76,7 +92,7 @@ function Page() {
             toast.error('Failed to join the contest');
             console.error('Error joining contest:', error);
         }
-    }, [contest]);
+    }, [contest, contestId]);
 
     // Timer effect to update remaining time
     useEffect(() => {
@@ -130,8 +146,78 @@ function Page() {
         return () => clearInterval(timer);
     }, [contest]);
 
+    // Helper function to safely access localStorage
+    const safeLocalStorage = {
+        getItem: (key: string): string | null => {
+            try {
+                return localStorage.getItem(key);
+            } catch (error) {
+                console.error('Error accessing localStorage:', error);
+                return null;
+            }
+        },
+        setItem: (key: string, value: string): void => {
+            try {
+                localStorage.setItem(key, value);
+            } catch (error) {
+                console.error('Error writing to localStorage:', error);
+            }
+        }
+    };
+
+    // Load problem statuses from local storage when component mounts
+    useEffect(() => {
+        if (contestId && problems.length > 0) {
+            const storageKey = `contest_${contestId}_problems`;
+            const savedProblems = safeLocalStorage.getItem(storageKey);
+
+            if (savedProblems) {
+                try {
+                    const parsedProblems = JSON.parse(savedProblems);
+
+                    // Only update if we have the same number of problems
+                    if (parsedProblems.length === problems.length) {
+                        // Merge saved statuses with current problems
+                        const updatedProblems = problems.map((problem, index) => ({
+                            ...problem,
+                            status: parsedProblems[index].status
+                        }));
+
+                        setProblems(updatedProblems);
+                    }
+                } catch (error) {
+                    console.error('Error parsing saved problems:', error);
+                }
+            }
+        }
+    }, [contestId, problems.length]);
+
+    // Save problem statuses to local storage whenever they change
+    useEffect(() => {
+        if (contestId && problems.length > 0) {
+            const storageKey = `contest_${contestId}_problems`;
+            safeLocalStorage.setItem(storageKey, JSON.stringify(problems));
+        }
+    }, [contestId, problems]);
+
     // Use useCallback to memoize the function and avoid dependency cycles
     const checkSubmission = useCallback(() => {
+        // Check if contest is running and user has participated
+        if (!contest) {
+            toast.error('Contest information not available');
+            return;
+        }
+
+        if (contest.status !== 'Active' && contest.status !== 'Ongoing') {
+            toast.error('Submissions can only be checked for active contests');
+            return;
+        }
+
+        if (!hasJoined) {
+            toast.error('You must participate in the contest to check submissions');
+            return;
+        }
+
         toast.promise(getRecentSubmissions('Bhupendra045'), {
             loading: 'Checking Submissions...',
             success: 'Submissions Checked',
@@ -184,14 +270,11 @@ function Page() {
                     setProblems(updatedProblems);
 
                     // Show success message if any problems were marked as solved
-                    const solvedCount = updatedProblems.filter(p => p.status === 'solved').length;
-                    if (solvedCount > 0) {
-                        toast.success(`Found ${solvedCount} solved problems!`);
-                    }
+                    // const solvedCount = updatedProblems.filter(p => p.status === 'solved').length;
                 }
             }
         });
-    }, [problems]);
+    }, [problems, contest, hasJoined]);
 
     // Fetch contest data
     useEffect(() => {
@@ -257,8 +340,18 @@ function Page() {
 
     // Check for solved problems only when component mounts
     useEffect(() => {
-        // Only check submissions if we have problems loaded and we're not loading
-        if (problems.length > 0 && !loading) {
+        // Only check submissions if:
+        // 1. Problems are loaded
+        // 2. We're not in a loading state
+        // 3. Contest is active/ongoing
+        // 4. User has joined the contest
+        if (
+            problems.length > 0 &&
+            !loading &&
+            contest &&
+            (contest.status === 'Active' || contest.status === 'Ongoing') &&
+            hasJoined
+        ) {
             // Automatically check submissions when component mounts
             checkSubmission();
         }
@@ -272,7 +365,7 @@ function Page() {
 
     // Function to get status badge color
     const getStatusColor = (status: string) => {
-        switch(status) {
+        switch (status) {
             case 'Active':
             case 'Ongoing':
                 return 'bg-green-500/10 text-green-500 border-green-500/20';
@@ -288,7 +381,7 @@ function Page() {
 
     // Function to get status icon
     const getStatusIcon = (status: string) => {
-        switch(status) {
+        switch (status) {
             case 'Active':
             case 'Ongoing':
                 return <Clock className="w-4 h-4 mr-1" />;
@@ -340,23 +433,14 @@ function Page() {
                                 </div>
 
                                 {/* Contest Timer */}
-                                {(contest.status === 'Active' || contest.status === 'Ongoing') && (
-                                    <Card className="bg-card p-4 rounded-xl shadow-md border border-border min-w-[200px]">
-                                        <div className="text-center">
+                                {(contest.status === 'Active') && (
+                                    <Card className="bg-card p-4 rounded-xl shadow-md border border-border min-w-[300px]">
+                                        <div className="text-center flex justify-between items-center">
                                             <p className="text-sm text-muted-foreground mb-1">Time Remaining</p>
                                             <p className="text-2xl font-mono font-bold text-primary">
                                                 {timeRemaining.hours.toString().padStart(2, '0')}:
                                                 {timeRemaining.minutes.toString().padStart(2, '0')}:
                                                 {timeRemaining.seconds.toString().padStart(2, '0')}
-                                            </p>
-                                            <div className="mt-3 mb-1">
-                                                <Progress
-                                                    value={timeRemaining.percentComplete}
-                                                    className="h-3 bg-primary/10"
-                                                />
-                                            </div>
-                                            <p className="text-xs text-muted-foreground">
-                                                {Math.round(timeRemaining.percentComplete)}% complete
                                             </p>
                                         </div>
                                     </Card>
