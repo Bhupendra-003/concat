@@ -63,3 +63,11 @@ export interface LeetCodeProblem {
         slug: string;
     }[];
 }
+
+export interface RecentSubmission {
+    lang: string;
+    statusDisplay: string;
+    timestamp: string; //1747207698
+    title: string;
+    titleSlug: string;
+}

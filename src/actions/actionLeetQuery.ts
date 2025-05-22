@@ -1,4 +1,5 @@
 "use server"
+import { RecentSubmission } from "@/db/types";
 import { LeetCode } from "leetcode-query";
 const leetcode = new LeetCode();
 
@@ -14,6 +15,20 @@ export async function getQuestion(query: string) {
         else return problem;
     } catch (error) {
         console.error("Error fetching question:", error);
+        throw error;
+    }
+}
+
+export async function getRecentSubmissions(username: string): Promise<RecentSubmission[]> {
+    try {
+        const profile = await leetcode.user(username);
+        if (!profile) throw new Error("Submissions not found");
+        else{
+            console.log("Submissions found", profile.recentSubmissionList);
+            return profile.recentSubmissionList!;    
+        };
+    } catch (error) {
+        console.error("Error fetching submissions:", error);
         throw error;
     }
 }

@@ -1,15 +1,17 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Problems from '@/components/tabs/Problems';
 import Header from '@/components/UserHeader';
 import { getContestById, getContestProblemsWithDetails } from '@/actions/actionNeonDb';
 import { useParams } from 'next/navigation';
-import { Contest as ContestType } from '@/db/types';
+import { Contest as ContestType, RecentSubmission } from '@/db/types';
 import toast from 'react-hot-toast';
-import { Clock, Users, Calendar, Trophy, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Clock, Users, Calendar, Trophy, AlertTriangle, CheckCircle2, Play, RotateCw } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { getRecentSubmissions } from '@/actions/actionLeetQuery';
 
 interface TabData {
     id: number;
@@ -38,6 +40,94 @@ function Page() {
     const [contest, setContest] = useState<ContestType | null>(null);
     const [problems, setProblems] = useState<ProblemDisplay[]>([]);
     const [loading, setLoading] = useState(true);
+    const [hasJoined, setHasJoined] = useState(false);
+    const [timeRemaining, setTimeRemaining] = useState<{
+        hours: number;
+        minutes: number;
+        seconds: number;
+        totalSeconds: number;
+        percentComplete: number;
+    }>({
+        hours: 0,
+        minutes: 0,
+        seconds: 0,
+        totalSeconds: 0,
+        percentComplete: 0
+    });
+
+    // Function to update participant count
+    const handleParticipate = useCallback(async () => {
+        if (!contest) return;
+
+        try {
+            // In a real app, you would call an API to update the participant count
+            // For now, we'll just update the local state
+            setHasJoined(true);
+            setContest(prev => {
+                if (!prev) return null;
+                return {
+                    ...prev,
+                    participants: prev.participants + 1
+                };
+            });
+            toast.success('You have joined the contest!');
+        } catch (error) {
+            toast.error('Failed to join the contest');
+            console.error('Error joining contest:', error);
+        }
+    }, [contest]);
+
+    // Timer effect to update remaining time
+    useEffect(() => {
+        if (!contest || contest.status !== 'Active' && contest.status !== 'Ongoing') return;
+
+        const calculateTimeRemaining = () => {
+            const startTime = new Date(contest.startTime).getTime();
+            const durationMs = contest.duration * 60 * 1000; // Convert minutes to milliseconds
+            const endTime = startTime + durationMs;
+            const now = new Date().getTime();
+            const distance = endTime - now;
+
+            // Calculate total duration and elapsed time for progress bar
+            const totalDuration = durationMs;
+            const elapsedTime = now - startTime;
+            const percentComplete = Math.min(100, Math.max(0, (elapsedTime / totalDuration) * 100));
+
+            if (distance <= 0) {
+                // Contest has ended
+                setTimeRemaining({
+                    hours: 0,
+                    minutes: 0,
+                    seconds: 0,
+                    totalSeconds: 0,
+                    percentComplete: 100
+                });
+                return;
+            }
+
+            // Calculate hours, minutes, seconds
+            const totalSeconds = Math.floor(distance / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+
+            setTimeRemaining({
+                hours,
+                minutes,
+                seconds,
+                totalSeconds,
+                percentComplete
+            });
+        };
+
+        // Calculate immediately
+        calculateTimeRemaining();
+
+        // Update every second
+        const timer = setInterval(calculateTimeRemaining, 1000);
+
+        return () => clearInterval(timer);
+    }, [contest]);
 
     // Fetch contest data
     useEffect(() => {
@@ -85,7 +175,8 @@ function Page() {
                         name: item.problem?.name || "Unknown Problem",
                         difficulty: (item.problem?.difficulty || "Medium") as 'Easy' | 'Medium' | 'Hard',
                         points: item.points,
-                        status: 'unsolved' as 'solved' | 'unsolved'
+                        status: 'unsolved' as 'solved' | 'unsolved',
+                        link: item.problem?.link || `https://leetcode.com/problems/${item.problem?.slug}/` // Add link to LeetCode
                     }));
 
                     setProblems(problemsDisplay);
@@ -148,6 +239,22 @@ function Page() {
         });
     };
 
+    const checkSubmission = () => {
+        toast.promise(getRecentSubmissions('Bhupendra045'), {
+            loading: 'Checking Submissions...',
+            success: 'Submissions Checked',
+            error: 'Failed to check submissions'
+        }).then((res) => {
+            console.log("Submissions", res);
+            const filterSubmissions = res.filter((submission: RecentSubmission) => {
+                return submission.statusDisplay === 'Accepted';
+            });
+            console.log("Filtered Submissions", filterSubmissions);
+        });
+
+
+    }
+
     return (
         <div className='min-h-screen bg-background'>
             <Header />
@@ -176,14 +283,36 @@ function Page() {
 
                                 {/* Contest Timer */}
                                 {(contest.status === 'Active' || contest.status === 'Ongoing') && (
-                                    <Card className="bg-card p-4 rounded-xl shadow-md border border-border">
+                                    <Card className="bg-card p-4 rounded-xl shadow-md border border-border min-w-[200px]">
                                         <div className="text-center">
                                             <p className="text-sm text-muted-foreground mb-1">Time Remaining</p>
                                             <p className="text-2xl font-mono font-bold text-primary">
-                                                {Math.floor(contest.duration / 60)}h {contest.duration % 60}m
+                                                {timeRemaining.hours.toString().padStart(2, '0')}:
+                                                {timeRemaining.minutes.toString().padStart(2, '0')}:
+                                                {timeRemaining.seconds.toString().padStart(2, '0')}
+                                            </p>
+                                            <div className="mt-3 mb-1">
+                                                <Progress
+                                                    value={timeRemaining.percentComplete}
+                                                    className="h-3 bg-primary/10"
+                                                />
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">
+                                                {Math.round(timeRemaining.percentComplete)}% complete
                                             </p>
                                         </div>
                                     </Card>
+                                )}
+
+                                {/* Participate Button */}
+                                {!hasJoined && (contest.status === 'Not Started' || contest.status === 'upcoming' || contest.status === 'Active' || contest.status === 'Ongoing') && (
+                                    <Button
+                                        onClick={handleParticipate}
+                                        className="bg-primary hover:bg-primary/90 text-white font-medium"
+                                    >
+                                        <Play className="w-4 h-4 mr-2" />
+                                        Participate
+                                    </Button>
                                 )}
                             </div>
 
@@ -202,9 +331,19 @@ function Page() {
                                 <Card className="bg-card p-4 rounded-xl shadow-md border border-border">
                                     <div className="flex items-center">
                                         <Clock className="w-5 h-5 text-primary mr-3" />
-                                        <div>
+                                        <div className="w-full">
                                             <p className="text-sm text-muted-foreground">Duration</p>
                                             <p className="font-medium text-foreground">{contest.duration} minutes</p>
+
+                                            {/* Only show progress bar for active contests */}
+                                            {(contest.status === 'Active' || contest.status === 'Ongoing') && (
+                                                <div className="mt-2">
+                                                    <Progress
+                                                        value={timeRemaining.percentComplete}
+                                                        className="h-2 bg-primary/10"
+                                                    />
+                                                </div>
+                                            )}  
                                         </div>
                                     </div>
                                 </Card>
@@ -250,7 +389,10 @@ function Page() {
                             {selectedTab.id === 1 && (
                                 problems.length > 0 ? (
                                     <div className="space-y-2">
-                                        <h2 className="text-xl font-semibold mb-4 text-foreground">Contest Problems</h2>
+                                        <div className='flex justify-between'>
+                                            <h2 className="text-xl font-semibold mb-4 text-foreground">Contest Problems</h2>
+                                            <span><RotateCw size={20} onClick={checkSubmission} /></span> {/* Refresh button to fetch user submission */}
+                                        </div>
                                         <Problems problems={problems} />
                                     </div>
                                 ) : (

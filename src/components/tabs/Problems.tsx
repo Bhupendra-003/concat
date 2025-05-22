@@ -9,6 +9,7 @@ interface Problem {
     difficulty: 'Easy' | 'Medium' | 'Hard';
     points: number;
     status: 'solved' | 'unsolved';
+    link?: string; // Optional link to the problem
 }
 
 function Problems({ problems }: { problems: Problem[] }) {
@@ -82,6 +83,12 @@ function Problems({ problems }: { problems: Problem[] }) {
                                     ? 'border-green-500/20 text-green-500 hover:text-green-400'
                                     : ''
                             }`}
+                            onClick={() => {
+                                if (problem.status !== 'solved' && problem.link) {
+                                    // Open the problem in a new tab
+                                    window.open(problem.link, '_blank');
+                                }
+                            }}
                         >
                             {problem.status === 'solved' ? (
                                 <span className="flex items-center">
