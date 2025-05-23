@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import Problems from '@/components/tabs/Problems';
+import Leaderboard from '@/components/tabs/Leaderboard';
 import Header from '@/components/UserHeader';
 import { getContestById, getContestProblemsWithDetails } from '@/actions/actionNeonDb';
 import { useParams } from 'next/navigation';
@@ -12,6 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { getRecentSubmissions } from '@/actions/actionLeetQuery';
+import { participateInContest, getContestLeaderboard, updateUserContestPoints } from '@/actions/actionLeaderboard';
+import { authClient } from "@/lib/auth-client";
 
 interface TabData {
     id: number;
@@ -41,7 +44,10 @@ function Page() {
     const [contest, setContest] = useState<ContestType | null>(null);
     const [problems, setProblems] = useState<ProblemDisplay[]>([]);
     const [loading, setLoading] = useState(true);
-    const [hasJoined, setHasJoined] = useState(false);
+    const [ hasJoined, setHasJoined] = useState(false);
+    const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
+    const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+    const { data: session } = authClient.useSession();
     const [timeRemaining, setTimeRemaining] = useState<{
         hours: number;
         minutes: number;
@@ -68,31 +74,47 @@ function Page() {
         }
     }, [contestId]);
 
-    // Function to update participant count
+    // Function to update participant count and add user to leaderboard
     const handleParticipate = useCallback(async () => {
-        if (!contest) return;
+        if (!contest || !session?.user?.id) return;
 
         try {
-            // In a real app, you would call an API to update the participant count
-            // For now, we'll just update the local state
-            setHasJoined(true);
+            // Show loading toast
+            toast.loading('Joining contest...', { id: 'joining-contest' });
 
-            // Save participation status to localStorage
-            safeLocalStorage.setItem(`contest_${contestId}_joined`, 'true');
+            // Call server action to update participant count and add user to leaderboard
+            const result = await participateInContest(contestId, session.user.id);
 
-            setContest(prev => {
-                if (!prev) return null;
-                return {
-                    ...prev,
-                    participants: prev.participants + 1
-                };
-            });
-            toast.success('You have joined the contest!');
+            if (result.success) {
+                // Update local state
+                setHasJoined(true);
+
+                // Save participation status to localStorage
+                safeLocalStorage.setItem(`contest_${contestId}_joined`, 'true');
+
+                // Update contest state with new participant count
+                setContest(prev => {
+                    if (!prev) return null;
+                    return {
+                        ...prev,
+                        participants: prev.participants + 1
+                    };
+                });
+
+                // Fetch updated leaderboard
+                fetchLeaderboard();
+
+                toast.success('You have joined the contest!', { id: 'joining-contest' });
+            } else {
+                // Type assertion to handle the error property
+                const errorMessage = 'error' in result ? result.error : 'Failed to join the contest';
+                toast.error(errorMessage!, { id: 'joining-contest' });
+            }
         } catch (error) {
-            toast.error('Failed to join the contest');
+            toast.error('Failed to join the contest', { id: 'joining-contest' });
             console.error('Error joining contest:', error);
         }
-    }, [contest, contestId]);
+    }, [contest, contestId, session?.user?.id]);
 
     // Timer effect to update remaining time
     useEffect(() => {
@@ -200,8 +222,27 @@ function Page() {
         }
     }, [contestId, problems]);
 
+    // Function to fetch leaderboard data
+    const fetchLeaderboard = useCallback(async () => {
+        if (!contestId) return;
+
+        setLeaderboardLoading(true);
+        try {
+            const result = await getContestLeaderboard(contestId);
+            if (result.success) {
+                setLeaderboardData(result.data || []);
+            } else {
+                console.error('Error fetching leaderboard:', result.error);
+            }
+        } catch (error) {
+            console.error('Error fetching leaderboard:', error);
+        } finally {
+            setLeaderboardLoading(false);
+        }
+    }, [contestId]);
+
     // Use useCallback to memoize the function and avoid dependency cycles
-    const checkSubmission = useCallback(() => {
+    const checkSubmission = useCallback(async () => {
         // Check if contest is running and user has participated
         if (!contest) {
             toast.error('Contest information not available');
@@ -218,11 +259,19 @@ function Page() {
             return;
         }
 
-        toast.promise(getRecentSubmissions('Bhupendra045'), {
+        if (!session?.user?.id) {
+            toast.error('You must be logged in to check submissions');
+            return;
+        }
+
+        // Get the LeetCode username from localStorage or use a default
+        const leetcodeUsername = localStorage.getItem('LeetcodeUsername') || '';
+
+        toast.promise(getRecentSubmissions(leetcodeUsername), {
             loading: 'Checking Submissions...',
             success: 'Submissions Checked',
             error: 'Failed to check submissions'
-        }).then((res) => {
+        }).then(async (res) => {
             console.log("Submissions", res);
             // Filter for accepted submissions
             const acceptedSubmissions = res.filter((submission: RecentSubmission) => {
@@ -269,12 +318,48 @@ function Page() {
                     // Update the problems state with the new statuses
                     setProblems(updatedProblems);
 
-                    // Show success message if any problems were marked as solved
-                    // const solvedCount = updatedProblems.filter(p => p.status === 'solved').length;
+                    // Update points in the database for newly solved problems
+                    const newlySolvedProblems = updatedProblems.filter((problem, index) =>
+                        problem.status === 'solved' && problems[index].status === 'unsolved'
+                    );
+
+                    // If there are newly solved problems, update points in the database
+                    if (newlySolvedProblems.length > 0) {
+                        for (const problem of newlySolvedProblems) {
+                            // Extract problem ID from the link
+                            const problemLink = problem.link || '';
+                            const idMatch = problemLink.match(/\/problems\/([^/]+)\//);
+                            const problemSlug = idMatch ? idMatch[1] : '';
+
+                            // Find the problem in the original data to get the actual ID
+                            const originalProblemData = await getContestProblemsWithDetails(contestId);
+                            if (originalProblemData?.success && originalProblemData.data) {
+                                const matchedProblem = originalProblemData.data.find(
+                                    (p: any) => p.problem?.slug === problemSlug
+                                );
+
+                                if (matchedProblem) {
+                                    // Update points in the database
+                                    await updateUserContestPoints(
+                                        contestId,
+                                        session.user.id,
+                                        matchedProblem.problemId,
+                                        problem.points
+                                    );
+                                }
+                            }
+                        }
+
+                        // Refresh the leaderboard after updating points
+                        fetchLeaderboard();
+
+                        // Show success message
+                        toast.success(`You earned points for solving ${newlySolvedProblems.length} problem(s)!`);
+                    }
                 }
             }
         });
-    }, [problems, contest, hasJoined]);
+    }, [problems, contest, hasJoined, contestId, session?.user?.id, fetchLeaderboard]);
 
     // Fetch contest data
     useEffect(() => {
@@ -361,7 +446,19 @@ function Page() {
     // Handle tab click
     const handleTabClick = (tab: TabData) => {
         setSelectedTab(tab);
+
+        // If switching to leaderboard tab, fetch leaderboard data
+        if (tab.id === 2) {
+            fetchLeaderboard();
+        }
     };
+
+    // Fetch leaderboard when component mounts
+    useEffect(() => {
+        if (contestId && !loading) {
+            fetchLeaderboard();
+        }
+    }, [contestId, loading, fetchLeaderboard]);
 
     // Function to get status badge color
     const getStatusColor = (status: string) => {
@@ -447,7 +544,7 @@ function Page() {
                                 )}
 
                                 {/* Participate Button */}
-                                {!hasJoined && (contest.status === 'Not Started' || contest.status === 'upcoming' || contest.status === 'Active' || contest.status === 'Ongoing') && (
+                                {!hasJoined && (contest.status === 'Not Started' || contest.status === 'upcoming' || contest.status === 'Active') && (
                                     <Button
                                         onClick={handleParticipate}
                                         className="bg-primary hover:bg-primary/90 text-white font-medium"
@@ -554,11 +651,19 @@ function Page() {
                             {selectedTab.id === 2 && (
                                 <div className="space-y-2">
                                     <h2 className="text-xl font-semibold mb-4 text-foreground">Contest Leaderboard</h2>
-                                    <div className="text-center py-12 text-muted-foreground">
-                                        <Trophy className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                                        <h3 className="text-lg font-medium">Leaderboard Coming Soon</h3>
-                                        <p className="mt-2">The leaderboard will be available once participants start submitting solutions.</p>
-                                    </div>
+                                    {!hasJoined ? (
+                                        <div className="text-center py-12 text-muted-foreground">
+                                            <Trophy className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                                            <h3 className="text-lg font-medium">You must participate to view the leaderboard</h3>
+                                            <p className="mt-2">Click the "Participate" button to join the contest and view the leaderboard.</p>
+                                        </div>
+                                    ) : (
+                                        <Leaderboard
+                                            entries={leaderboardData}
+                                            loading={leaderboardLoading}
+                                            currentUserId={session?.user?.id}
+                                        />
+                                    )}
                                 </div>
                             )}
                         </Card>
