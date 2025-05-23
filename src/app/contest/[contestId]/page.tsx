@@ -13,7 +13,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { getRecentSubmissions } from '@/actions/actionLeetQuery';
-import { participateInContest, getContestLeaderboard, updateUserContestPoints } from '@/actions/actionLeaderboard';
+import {
+    participateInContest,
+    getContestLeaderboard,
+    updateUserContestPoints,
+    hasUserParticipatedInContest
+} from '@/actions/actionLeaderboard';
+import { updateContestStatus } from '@/actions/actionContestStatus';
 import { authClient } from "@/lib/auth-client";
 
 interface TabData {
@@ -62,17 +68,35 @@ function Page() {
         percentComplete: 0
     });
 
-    // Load hasJoined state from localStorage
+    // Check if user has participated in the contest
     useEffect(() => {
-        if (contestId) {
-            const hasJoinedKey = `contest_${contestId}_joined`;
-            const savedHasJoined = safeLocalStorage.getItem(hasJoinedKey);
+        const checkParticipation = async () => {
+            if (contestId && session?.user?.id) {
+                // First check localStorage for quick loading
+                const hasJoinedKey = `contest_${contestId}_joined`;
+                const savedHasJoined = safeLocalStorage.getItem(hasJoinedKey);
 
-            if (savedHasJoined === 'true') {
-                setHasJoined(true);
+                if (savedHasJoined === 'true') {
+                    setHasJoined(true);
+                    return;
+                }
+
+                // If not in localStorage, check the database
+                try {
+                    const result = await hasUserParticipatedInContest(contestId, session.user.id);
+                    if (result.success && result.hasParticipated) {
+                        setHasJoined(true);
+                        // Save to localStorage for future quick access
+                        safeLocalStorage.setItem(hasJoinedKey, 'true');
+                    }
+                } catch (error) {
+                    console.error('Error checking participation:', error);
+                }
             }
-        }
-    }, [contestId]);
+        };
+
+        checkParticipation();
+    }, [contestId, session?.user?.id]);
 
     // Function to update participant count and add user to leaderboard
     const handleParticipate = useCallback(async () => {
@@ -284,7 +308,7 @@ function Page() {
                 // Get contest start time
                 const contestStartTime = new Date(contest.startTime).getTime();
                 console.log("Contest start time:", new Date(contestStartTime).toISOString());
-                
+
                 // Create a new array of problems with updated status
                 const updatedProblems = problems.map(problem => {
                     // Extract the slug from the problem link
@@ -298,24 +322,24 @@ function Page() {
                         // Convert submission timestamp to milliseconds
                         const submissionTime = parseInt(submission.timestamp) * 1000;
                         const submissionDate = new Date(submissionTime).toISOString();
-                        
+
                         // Check if submission was after contest start
                         const isAfterContestStart = submissionTime >= contestStartTime;
-                        
+
                         // Check if the submission matches this problem's slug
                         const isMatch = submission.titleSlug === problemSlug;
-                        
+
                         if (isMatch) {
                             console.log(`Found matching submission for ${problemSlug}:`);
                             console.log(`  Submission time: ${submissionDate}`);
                             console.log(`  After contest start: ${isAfterContestStart}`);
                         }
-                        
+
                         return isAfterContestStart && isMatch;
                     });
 
                     console.log(`Problem ${problem.name} is solved: ${isSolved}`);
-                    
+
                     // Return updated problem with solved status if found
                     return {
                         ...problem,
@@ -358,12 +382,12 @@ function Page() {
 
                                 if (matchedProblem) {
                                     // Make sure we're passing a number for points
-                                    const pointsValue = typeof problem.points === 'string' 
-                                        ? parseInt(problem.points) 
+                                    const pointsValue = typeof problem.points === 'string'
+                                        ? parseInt(problem.points)
                                         : problem.points;
-                                    
+
                                     console.log(`Found matching problem in DB. ID: ${matchedProblem.problemId}, Points: ${pointsValue}`);
-                                    
+
                                     // Update points in the database
                                     const updateResult = await updateUserContestPoints(
                                         contestId,
@@ -371,7 +395,7 @@ function Page() {
                                         matchedProblem.problemId,
                                         pointsValue
                                     );
-                                    
+
                                     console.log("Points update result:", updateResult);
                                 } else {
                                     console.error(`Could not find problem with slug ${problemSlug} in contest problems`);
@@ -398,8 +422,12 @@ function Page() {
 
         setLoading(true);
 
-        // Fetch contest details
-        getContestById(contestId)
+        // First update the contest status to ensure it's current
+        updateContestStatus(contestId)
+            .then(() => {
+                // Then fetch contest details
+                return getContestById(contestId);
+            })
             .then(res => {
                 if (res?.success && res.data) {
                     // Ensure the status is one of the allowed values in the Contest type

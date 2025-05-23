@@ -29,6 +29,14 @@ export default function LandingPage() {
                     >
                         Sign In
                     </button>
+                    <button
+                        onClick={()=>{
+                            router.push('/creater/dashboard');
+                        }}
+                        className="bg-accent hover:bg-accent/80 text-white px-4 py-2 rounded-md font-medium transition-colors"
+                    >
+                        For Creaters
+                    </button>
                 </div>
             </header>
 

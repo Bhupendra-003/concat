@@ -22,7 +22,7 @@ export async function participateInContest(contestId: string, userId: string) {
         }
 
         // 2. Add user to the userContest table (if not already there)
-        const userContestResult = await db
+        await db
             .insert(userContest)
             .values({
                 userId: userId,
@@ -30,11 +30,10 @@ export async function participateInContest(contestId: string, userId: string) {
                 totalPoints: 0,
                 rank: 0, // Will be updated later
             })
-            .onConflictDoNothing()
-            .returning();
+            .onConflictDoNothing();
 
         // 3. Add user to the contestLeaderboard table (if not already there)
-        const leaderboardResult = await db
+        await db
             .insert(contestLeaderboard)
             .values({
                 contestId: contestId,
@@ -42,18 +41,18 @@ export async function participateInContest(contestId: string, userId: string) {
                 score: 0,
                 rank: 0, // Will be updated later
             })
-            .onConflictDoNothing()
-            .returning();
+            .onConflictDoNothing();
 
         // 4. Update all ranks in the leaderboard
         await updateLeaderboardRanks(contestId);
 
+        // Serialize the data to avoid passing non-serializable objects to client components
         return {
             success: true,
             data: {
-                contest: contestResult[0],
-                userContest: userContestResult,
-                leaderboard: leaderboardResult
+                contestId: contestId,
+                userId: userId,
+                participantCount: contestResult[0].participants
             }
         };
     } catch (error) {
@@ -206,5 +205,36 @@ export async function getContestLeaderboard(contestId: string) {
     } catch (error) {
         console.error("Error getting contest leaderboard:", error);
         return { success: false, error: "Failed to get contest leaderboard" };
+    }
+}
+
+/**
+ * Checks if a user has participated in a specific contest
+ */
+export async function hasUserParticipatedInContest(contestId: string, userId: string) {
+    try {
+        // Check if there's an entry in the userContest table
+        const result = await db
+            .select()
+            .from(userContest)
+            .where(
+                and(
+                    eq(userContest.contestId, contestId),
+                    eq(userContest.userId, userId)
+                )
+            );
+
+        // If there's at least one entry, the user has participated
+        return {
+            success: true,
+            hasParticipated: result.length > 0
+        };
+    } catch (error) {
+        console.error("Error checking user participation:", error);
+        return {
+            success: false,
+            error: "Failed to check user participation",
+            hasParticipated: false
+        };
     }
 }
