@@ -7,7 +7,7 @@ import { signOut } from "@/app/auth/auth-methods";
 import { Ring2 } from 'ldrs/react';
 import 'ldrs/react/Ring2.css';
 import { authClient } from "@/lib/auth-client";
-export default function userHeader() {
+export default function UserHeader() {
     const [loading, setLoading] = useState(false);
     const [open, setOpen] = useState(false);
     const router = useRouter();
@@ -17,17 +17,10 @@ export default function userHeader() {
         setLoading(false);
         router.push('/auth');
     };
-    const {
-        data: session,
-        isPending, //loading state
-        error, //error object
-        refetch //refetch the session
-    } = authClient.useSession()
-    if (session?.user) {
-        console.log('User is logged in', session.user)
-    } else {
-        console.log('User is not logged in')
-    }
+    const { data: session } = authClient.useSession()
+
+    // Get user data
+    const user = session?.user;
     return (
         <header className="bg-background p-4 rounded-b-3xl flex items-center justify-between ">
             <div className="flex items-center space-x-8">
@@ -59,17 +52,42 @@ export default function userHeader() {
 
                 {/* Profile Icon */}
                 <div>
-                    <div onClick={() => setOpen(!open)} className='w-12 h-12 text-white flex items-center justify-center cursor-pointer bg-accent rounded-full text-2xl font-semibold'>B</div>
+                    <div
+                        onClick={() => setOpen(!open)}
+                        className='w-12 h-12 text-white flex items-center justify-center cursor-pointer bg-accent rounded-full text-2xl font-semibold overflow-hidden'
+                    >
+                        {user?.image ? (
+                            <img
+                                src={user.image}
+                                alt={user.name || 'User'}
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <span>{user?.name?.charAt(0).toUpperCase() || 'U'}</span>
+                        )}
+                    </div>
                     {open && (
-                        <div className="absolute border border-muted-foreground right-0 top-15 w-48 bg-background rounded-md shadow-lg">
+                        <div className="absolute border border-muted-foreground right-0 top-15 w-64 bg-background rounded-md shadow-lg z-50">
+                            {user && (
+                                <div className="p-3 border-b border-muted-foreground">
+                                    <p className="font-medium text-foreground">{user.name}</p>
+                                    <p className="text-xs text-muted-foreground">{user.email}</p>
+                                </div>
+                            )}
                             <div className="p-2">
-                                <button className="w-full text-left text-sm text-foreground hover:text-primary transition-all duration-200 " onClick={handleLogout}>
-                                    {loading ?
+                                <Link href="/profile" className="block w-full text-left p-2 text-sm text-foreground hover:text-primary hover:bg-accent/10 rounded-md transition-all duration-200">
+                                    Profile
+                                </Link>
+                                <button
+                                    className="w-full text-left p-2 text-sm text-foreground hover:text-primary hover:bg-accent/10 rounded-md transition-all duration-200"
+                                    onClick={handleLogout}
+                                >
+                                    {loading ? (
                                         <div className="flex items-center justify-start">
                                             <Ring2 size="20" stroke="3" strokeLength="0.25" bgOpacity="0.1" speed="0.8" color="var(--primary)" />
                                             <span className="ml-2 text-foreground">Logging out...</span>
                                         </div>
-                                        : 'Logout'}
+                                    ) : 'Logout'}
                                 </button>
                             </div>
                         </div>
