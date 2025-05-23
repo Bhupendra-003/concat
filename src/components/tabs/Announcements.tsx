@@ -1,11 +1,10 @@
 "use client";
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import React from 'react';
 import { Badge } from "@/components/ui/badge";
-import { Bell, Calendar, ChevronDown, ChevronUp, Megaphone, User, Star, Trophy } from 'lucide-react';
+import { Bell, Calendar, Megaphone, User, Star, Trophy } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 // Mock announcement data
 const mockAnnouncements = [
@@ -81,78 +80,6 @@ const getAnnouncementTypeInfo = (type: string) => {
 
 
 
-const AnnouncementCard: React.FC<{ announcement: any }> = ({ announcement }) => {
-  const [expanded, setExpanded] = useState(false);
-
-  const toggleExpand = () => {
-    setExpanded(!expanded);
-  };
-
-  return (
-    <Card
-      key={announcement.id}
-      className={cn(
-        "overflow-hidden border-border",
-        expanded ? "bg-zinc-900" : "bg-zinc-950"
-      )}
-    >
-      <div className="flex flex-col">
-        <CardHeader className="pb-1 pt-2 px-3">
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle className="text-base flex items-center">
-                {announcement.title}
-                <div className="flex items-center ml-2 space-x-1">
-                  {announcement.important && (
-                    <Badge className="bg-primary hover:bg-primary/90 text-xs">Important</Badge>
-                  )}
-                  {announcement.isNew && (
-                    <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs">New</Badge>
-                  )}
-                </div>
-              </CardTitle>
-              <CardDescription className="flex items-center mt-0.5 text-xs">
-                <span className="mr-2">{announcement.author}</span>
-                <span className="text-xs">•</span>
-                <span className="ml-2 text-xs">{formatDateTime(announcement.date)}</span>
-              </CardDescription>
-            </div>
-            <Badge
-              variant="secondary"
-              className={`uppercase text-xs font-semibold flex items-center text-white ${getAnnouncementTypeInfo(announcement.type).color}`}
-            >
-              {getAnnouncementTypeInfo(announcement.type).icon}
-              {announcement.type}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="py-1 px-3">
-          <p className={cn(
-            "text-muted-foreground text-sm",
-            expanded ? "" : "line-clamp-1"
-          )}>
-            {announcement.content}
-          </p>
-        </CardContent>
-        <CardFooter className="pt-0 pb-1 px-3 flex justify-end">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-xs flex items-center h-6 px-2"
-            onClick={toggleExpand}
-          >
-            {expanded ? (
-              <>Show less <ChevronUp className="h-3 w-3 ml-1" /></>
-            ) : (
-              <>Read more <ChevronDown className="h-3 w-3 ml-1" /></>
-            )}
-          </Button>
-        </CardFooter>
-      </div>
-    </Card>
-  );
-};
-
 const Announcements: React.FC = () => {
   return (
     <div className="space-y-4">
@@ -164,11 +91,51 @@ const Announcements: React.FC = () => {
         </Badge>
       </div>
 
-      <div className="space-y-2">
+      <Accordion type="single" collapsible className="space-y-2">
         {mockAnnouncements.map((announcement) => (
-          <AnnouncementCard key={announcement.id} announcement={announcement} />
+          <AccordionItem
+            key={announcement.id}
+            value={`announcement-${announcement.id}`}
+            className={cn(
+              "overflow-hidden ",
+              "bg-background mb-2 last:mb-0"
+            )}
+          >
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <div className="flex flex-1 justify-between items-center">
+                <div className="flex items-center">
+                  <span className="font-medium text-base">{announcement.title}</span>
+                  <div className="flex items-center ml-2 space-x-1">
+                    {announcement.important && (
+                      <Badge className="bg-primary hover:bg-primary/90 text-xs">Important</Badge>
+                    )}
+                    {announcement.isNew && (
+                      <Badge className="bg-green-500 hover:bg-green-600 text-black text-xs">New</Badge>
+                    )}
+                  </div>
+                </div>
+                <Badge
+                  variant="secondary"
+                  className={`uppercase text-xs mr-4 font-semibold flex items-center text-white ${getAnnouncementTypeInfo(announcement.type).color}`}
+                >
+                  {getAnnouncementTypeInfo(announcement.type).icon}
+                  {announcement.type}
+                </Badge>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pt-0 pb-3 text-muted-foreground">
+              <div className="flex flex-col space-y-2">
+                <div className="flex items-center text-xs text-muted-foreground">
+                  <span className="mr-2">{announcement.author}</span>
+                  <span className="text-xs">•</span>
+                  <span className="ml-2 text-xs">{formatDateTime(announcement.date)}</span>
+                </div>
+                <p className="text-sm">{announcement.content}</p>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
         ))}
-      </div>
+      </Accordion>
     </div>
   );
 };

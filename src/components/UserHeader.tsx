@@ -49,7 +49,7 @@ export default function UserHeader() {
                 <div className="relative group">
                     <input
                         type="text"
-                        placeholder="Search Reports"
+                        placeholder="Search Users"
                         className="bg-input text-foreground placeholder-muted-foreground rounded-full py-3 pl-10 pr-10 w-96 focus:outline-none"
                     />
                     <IoSearchSharp size={20} className="absolute  right-5 top-1/2 transform -translate-y-1/2 text-muted-foreground group-hover:text-primary transition-colors duration-200" />
