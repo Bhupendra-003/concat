@@ -49,7 +49,7 @@ function Page() {
       <Header />
       <main className='mt-2'>
         <h1 className="text-4xl font-semibold py-6">
-          Welcome <span className='text-primary ml-1'>Bhupendra</span>
+          Welcome <span className='text-primary ml-1'>Name</span>
         </h1>
 
         <nav className='flex space-x-12 text-sm'>

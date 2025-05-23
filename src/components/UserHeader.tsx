@@ -42,7 +42,7 @@ export default function userHeader() {
             {/* Navigation */}
             <div className="flex justify-between items-center gap-12 relative">
                 <nav className="flex space-x-12 text-sm">
-                    <Link href="/" className="text-muted-foreground hover:text-primary transition-all duration-200 font-semibold text-lg">Home</Link>
+                    <Link href="/" className="text-muted-foreground hover:text-primary transition-all duration-200 font-semibold text-lg">Dashboard</Link>
                     <Link href="/settings" className="text-muted-foreground hover:text-primary transition-all duration-200 font-semibold text-lg">Settings</Link>
                     <Link href="/help" className="text-muted-foreground hover:text-primary transition-all duration-200 font-semibold text-lg">Help</Link>
                 </nav>

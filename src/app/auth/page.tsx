@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from 'react';
-import { ArrowLeft, CheckCircle, User } from 'lucide-react';
+import { ArrowLeft, User } from 'lucide-react';
 import { signUp, signIn, googleSignIn } from './auth-methods';
 import { Ring2 } from 'ldrs/react';
 import { useRouter } from 'next/navigation';
@@ -10,109 +10,118 @@ import Loading from '@/components/Loading';
 import 'ldrs/react/Ring2.css';
 import { toast } from 'react-hot-toast';
 import { getLeetCodeUserProfile } from '@/actions/actionLeetQuery';
-import db from '@/db';
-import { user } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { updateUserLeetCodeUsername } from '@/actions/actionNeonDb';
 export default function AuthForm() {
     const router = useRouter();
-    const [view, setView] = useState<'signup' | 'signin' | 'verify' | 'leetcode' | 'leetcode-confirm'>('signup');
-    const [email, setEmail] = useState<string>('');
-    const [password, setPassword] = useState<string>('');
-    const [name, setName] = useState<string>('');
-    const [leetcodeUsername, setLeetcodeUsername] = useState<string>('');
-    const [leetcodeUserData, setLeetcodeUserData] = useState<any>(null);
-    const [sessionLoading, setSessionLoading] = useState(true); // default true
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    // Combined state object for form data and UI state
+    const [formState, setFormState] = useState({
+        view: 'signup' as 'signup' | 'signin' | 'verify' | 'leetcode' | 'leetcode-confirm',
+        email: '',
+        password: '',
+        name: '',
+        leetcodeUsername: '',
+        leetcodeUserData: null as any,
+        sessionLoading: true, // default true
+        loading: false,
+        error: null as string | null
+    });
 
     useEffect(() => {
         const checkSession = async () => {
-            setSessionLoading(true);
-            const { data: session, error: sessionError } = await authClient.getSession();
+            setFormState(prev => ({ ...prev, sessionLoading: true }));
+            const { data: session } = await authClient.getSession();
             if (session?.user) {
                 router.push('/user');
             } else {
-                setSessionLoading(false); // session checked, no user
+                setFormState(prev => ({ ...prev, sessionLoading: false })); // session checked, no user
             }
         };
         checkSession();
     }, [router]);
 
-    const updateLeetcodeUsername = async () => {
-        await db.update(user).
-        set({username: leetcodeUsername})
-        .where(eq(user.email, email));
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
-        setError(null);
+        setFormState(prev => ({ ...prev, loading: true, error: null }));
 
-        if (view === 'signup') {
+        if (formState.view === 'signup') {
             // Move to LeetCode username input view
-            setView('leetcode');
-            setLoading(false);
-        } else if (view === 'leetcode') {
+            setFormState(prev => ({ ...prev, view: 'leetcode', loading: false }));
+        } else if (formState.view === 'leetcode') {
             try {
                 // Fetch LeetCode user profile data
-                const profileData = await getLeetCodeUserProfile(leetcodeUsername);
+                const profileData = await getLeetCodeUserProfile(formState.leetcodeUsername);
                 if (profileData) {
-                    setLeetcodeUserData(profileData);
-                    // Use the real name from LeetCode profile
-                    setName(profileData.realName || leetcodeUsername);
-                    setView('leetcode-confirm');
+                    setFormState(prev => ({
+                        ...prev,
+                        leetcodeUserData: profileData,
+                        name: profileData.realName || formState.leetcodeUsername,
+                        view: 'leetcode-confirm'
+                    }));
                 } else {
                     toast.error('No LeetCode data found for this username');
                 }
             } catch (error: any) {
                 toast.error(error.message || 'Failed to fetch LeetCode data');
-                setError(error.message);
+                setFormState(prev => ({ ...prev, error: error.message }));
             }
-            setLoading(false);
-        } else if (view === 'leetcode-confirm') {
+            setFormState(prev => ({ ...prev, loading: false }));
+        } else if (formState.view === 'leetcode-confirm') {
             // Complete signup with LeetCode username and profile data
-            console.log('Signing up... with email:', email, 'and LeetCode username:', leetcodeUsername);
-            const userAvatar = leetcodeUserData?.userAvatar || "";
-            toast.promise(signUp(email, password, name, userAvatar), {
+            console.log('Signing up... with email:', formState.email, 'and LeetCode username:', formState.leetcodeUsername);
+            const userAvatar = formState.leetcodeUserData?.userAvatar || "";
+            toast.promise(signUp(formState.email, formState.password, formState.name, userAvatar), {
                 loading: 'Signing up...',
                 success: 'Signed up successfully',
                 error: 'Failed to sign up'
             }).then((data) => {
                 console.log('User Created with data:', data);
-                updateLeetcodeUsername()
+                updateUserLeetCodeUsername(formState.email, formState.leetcodeUsername);
+                router.push('/user');
+                localStorage.setItem('LeetcodeUsername', formState.leetcodeUsername);
+                // Reset form state
+                setFormState(prev => ({
+                    ...prev,
+                    loading: false,
+                    view: 'signup',
+                    email: '',
+                    password: '',
+                    name: '',
+                    leetcodeUsername: '',
+                    leetcodeUserData: null,
+                    error: null
+                }));
             }).catch((error: any) => {
-                setError(error.message);
+                setFormState(prev => ({ ...prev, error: error.message }));
                 console.error('Failed to sign up:', error);
             });
-            setLoading(false);
-        } else if (view === 'signin') {
-            console.log('Signing in... with email:', email);
-            toast.promise(signIn(email, password), {
+            setFormState(prev => ({ ...prev, loading: false }));
+        } else if (formState.view === 'signin') {
+            console.log('Signing in... with email:', formState.email);
+            toast.promise(signIn(formState.email, formState.password), {
                 loading: 'Signing in...',
                 success: 'Signed in successfully',
                 error: 'Failed to sign in'
             }).then(() => {
                 router.push('/user');
             }).catch((error: any) => {
-                setError(error.message);
+                setFormState(prev => ({ ...prev, error: error.message }));
             });
-            setLoading(false);
+            setFormState(prev => ({ ...prev, loading: false }));
         }
     };
 
     const resendEmail = async () => {
         console.log('Resending verification email...');
-        setLoading(true);
+        setFormState(prev => ({ ...prev, loading: true }));
         await authClient.sendVerificationEmail({
-            email: email,
+            email: formState.email,
             callbackURL: "/dashboard",
         });
-        setLoading(false);
+        setFormState(prev => ({ ...prev, loading: false }));
         console.log('Verification email resent');
     };
     // 🌟 Show loading spinner while checking session
-    if (sessionLoading) {
+    if (formState.sessionLoading) {
         return <Loading />;
     }
 
@@ -123,24 +132,24 @@ export default function AuthForm() {
             <div className="flex flex-1 flex-col items-center justify-center p-4">
                 <div className="w-full max-w-md">
                     {/* Sign Up View */}
-                    {view === 'signup' && (
+                    {formState.view === 'signup' && (
                         <>
                             <h1 className="mb-6 text-center text-4xl font-bold">
                                 Sign up to Con<span className="text-primary">Cat</span>
                             </h1>
                             <div className="mb-6 text-center">
                                 <span className="text-muted-foreground">Already have an account?</span>{' '}
-                                <button onClick={() => setView('signin')} className="text-red-500 hover:underline">
+                                <button onClick={() => setFormState(prev => ({ ...prev, view: 'signin' }))} className="text-red-500 hover:underline">
                                     Sign in
                                 </button>
                             </div>
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 <input
                                     type="email"
-                                    value={email}
+                                    value={formState.email}
                                     onChange={(e) => {
                                         console.log('Email changed to:', e.target.value);
-                                        setEmail(e.target.value);
+                                        setFormState(prev => ({ ...prev, email: e.target.value }));
                                     }}
                                     className="w-full rounded-lg border bg-input p-3 text-white focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                                     placeholder="Email address"
@@ -150,8 +159,8 @@ export default function AuthForm() {
                                 />
                                 <input
                                     type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
+                                    value={formState.password}
+                                    onChange={(e) => setFormState(prev => ({ ...prev, password: e.target.value }))}
                                     className="w-full rounded-lg border bg-input p-3 text-white focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                                     placeholder="Password"
                                     autoComplete="new-password"
@@ -161,12 +170,12 @@ export default function AuthForm() {
                                     type="submit"
                                     className="w-full rounded-lg bg-primary py-3 font-medium text-white transition-colors hover:bg-primary/80"
                                 >
-                                    {loading ? <Ring2 size="20" stroke="3" strokeLength="0.25" bgOpacity="0.1" speed="0.8" color="white" /> : 'Sign up'}
+                                    {formState.loading ? <Ring2 size="20" stroke="3" strokeLength="0.25" bgOpacity="0.1" speed="0.8" color="white" /> : 'Continue'}
                                 </button>
                             </form>
                             <p className='text-center my-4'>Or</p>
                             <button className="w-full rounded-lg bg-accent py-3 font-medium text-white transition-colors hover:bg-white hover:text-black" onClick={googleSignIn}>
-                                {loading ?
+                                {formState.loading ?
                                 <Ring2 size="20" stroke="3" strokeLength="0.25" bgOpacity="0.1" speed="0.8" color="white" />
                                 : <div className='flex items-center justify-center gap-4'>
                                     <img className='w-5' src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/480px-Google_%22G%22_logo.svg.png" alt="" />
@@ -177,24 +186,24 @@ export default function AuthForm() {
                     )}
 
                     {/* Sign In View */}
-                    {view === 'signin' && (
+                    {formState.view === 'signin' && (
                         <>
                             <h1 className="mb-6 text-center text-4xl font-bold">
                                 Welcome to Con<span className="text-primary">Cat</span>
                             </h1>
                             <div className="mb-6 text-center">
                                 <span className="text-muted-foreground">Don't have an account?</span>{' '}
-                                <button onClick={() => setView('signup')} className="text-red-500 hover:underline">
+                                <button onClick={() => setFormState(prev => ({ ...prev, view: 'signup' }))} className="text-red-500 hover:underline">
                                     Sign up
                                 </button>
                             </div>
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 <input
                                     type="email"
-                                    value={email}
+                                    value={formState.email}
                                     onChange={(e) => {
                                         console.log('Email changed to:', e.target.value);
-                                        return setEmail(e.target.value);
+                                        setFormState(prev => ({ ...prev, email: e.target.value }));
                                     }}
                                     className="w-full rounded-lg border bg-input p-3 text-white focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                                     placeholder="Email address"
@@ -204,8 +213,8 @@ export default function AuthForm() {
                                 />
                                 <input
                                     type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
+                                    value={formState.password}
+                                    onChange={(e) => setFormState(prev => ({ ...prev, password: e.target.value }))}
                                     className="w-full rounded-lg border bg-input p-3 text-white focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                                     placeholder="Password"
                                     autoComplete="password"
@@ -216,13 +225,13 @@ export default function AuthForm() {
                                     type="submit"
                                     className="w-full rounded-lg bg-primary py-3 font-medium text-white transition-colors hover:bg-primary/80"
                                 >
-                                    {loading ? <Ring2 size="20" stroke="3" strokeLength="0.25" bgOpacity="0.1" speed="0.8" color="white" /> : 'Sign in'}
+                                    {formState.loading ? <Ring2 size="20" stroke="3" strokeLength="0.25" bgOpacity="0.1" speed="0.8" color="white" /> : 'Sign in'}
                                 </button>
 
                             </form>
                             <p className='text-center my-4'>Or</p>
                             <button className="w-full rounded-lg bg-accent py-3 font-medium text-white transition-colors hover:bg-white hover:text-black" onClick={googleSignIn}>
-                                {loading ?
+                                {formState.loading ?
                                 <Ring2 size="20" stroke="3" strokeLength="0.25" bgOpacity="0.1" speed="0.8" color="white" />
                                 : <div className='flex items-center justify-center gap-4'>
                                     <img className='w-5' src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/480px-Google_%22G%22_logo.svg.png" alt="" />
@@ -233,38 +242,38 @@ export default function AuthForm() {
                     )}
 
                     {/* LeetCode Username Input View */}
-                    {view === 'leetcode' && (
+                    {formState.view === 'leetcode' && (
                         <>
-                            <h1 className="mb-4 text-center text-4xl font-bold">
+                            <h1 className="mb-6 text-center text-4xl font-bold">
                                 Connect your LeetCode
                             </h1>
                             <div className="mb-8 text-center">
-                                <span className="text-muted-foreground text-lg">This helps us verify your coding skills</span>
+                                <span className="text-muted-foreground text-lg">This helps us finding you on LeetCode</span>
                             </div>
-                            <form onSubmit={handleSubmit} className="space-y-6">
+                            <form onSubmit={handleSubmit} className="space-y-4">
                                 <div className="space-y-3">
-                                    <label htmlFor="leetcode-username" className="text-sm font-medium text-muted-foreground">LeetCode Username</label>
+                                    <label htmlFor="leetcode-username" className="text-sm font-medium text-white">LeetCode Username</label>
                                     <input
                                         type="text"
                                         id="leetcode-username"
-                                        value={leetcodeUsername}
-                                        onChange={(e) => setLeetcodeUsername(e.target.value)}
-                                        className="w-full rounded-lg border bg-input p-3 text-white focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                                        value={formState.leetcodeUsername}
+                                        onChange={(e) => setFormState(prev => ({ ...prev, leetcodeUsername: e.target.value }))}
+                                        className="w-full rounded-lg border mt-1 bg-input p-3 text-white focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                                         placeholder="Your LeetCode username"
                                         required
                                         autoComplete="off"
                                     />
-                                    <p className="text-xs text-muted-foreground mt-2">
+                                    <p className="text-xs text-center text-muted-foreground mt-2">
                                         We'll fetch your profile details from LeetCode automatically
                                     </p>
                                 </div>
-                                <div className="pt-2">
+                                <div>
                                     <button
                                         type="submit"
                                         className="w-full rounded-lg bg-primary py-3 font-medium text-white transition-colors hover:bg-primary/80"
-                                        disabled={loading}
+                                        disabled={formState.loading}
                                     >
-                                        {loading ?
+                                        {formState.loading ?
                                             <div className="flex items-center justify-center">
                                                 <Ring2 size="20" stroke="3" strokeLength="0.25" bgOpacity="0.1" speed="0.8" color="white" />
                                                 <span className="ml-2">Verifying...</span>
@@ -273,12 +282,12 @@ export default function AuthForm() {
                                         }
                                     </button>
                                 </div>
-                                <div className="pt-2">
+                                <div>
                                     <button
                                         type="button"
-                                        onClick={() => setView('signup')}
+                                        onClick={() => setFormState(prev => ({ ...prev, view: 'signup' }))}
                                         className="flex w-full items-center justify-center rounded-lg bg-accent py-3 font-medium text-white transition-colors hover:bg-accent/80"
-                                        disabled={loading}
+                                        disabled={formState.loading}
                                     >
                                         <ArrowLeft size={18} className="mr-2" />
                                         Back
@@ -289,7 +298,7 @@ export default function AuthForm() {
                     )}
 
                     {/* LeetCode Confirmation View */}
-                    {view === 'leetcode-confirm' && leetcodeUserData && (
+                    {formState.view === 'leetcode-confirm' && formState.leetcodeUserData && (
                         <>
                             <h1 className="mb-6 text-center text-4xl font-bold">
                                 Confirm LeetCode Account
@@ -299,7 +308,7 @@ export default function AuthForm() {
                             </div>
                             <div className="mb-8 p-6 bg-accent/20 rounded-lg shadow-sm">
                                 <div className="flex items-center gap-4 mb-6">
-                                    {leetcodeUserData.userAvatar ? (
+                                    {formState.leetcodeUserData.userAvatar ? (
                                         <div className="relative w-16 h-16 rounded-full bg-accent/30 flex items-center justify-center overflow-hidden">
                                             <div className="absolute">
                                                 <Ring2
@@ -312,8 +321,8 @@ export default function AuthForm() {
                                                 />
                                             </div>
                                             <img
-                                                src={leetcodeUserData.userAvatar}
-                                                alt={leetcodeUserData.username}
+                                                src={formState.leetcodeUserData.userAvatar}
+                                                alt={formState.leetcodeUserData.username}
                                                 className="w-full h-full object-cover rounded-full z-10"
                                                 onLoad={(e) => {
                                                     // Hide the loader when image loads
@@ -332,19 +341,19 @@ export default function AuthForm() {
                                         </div>
                                     )}
                                     <div>
-                                        <h3 className="text-2xl font-semibold mb-1">{leetcodeUserData.realName || leetcodeUserData.username}</h3>
-                                        <p className="text-md text-muted-foreground mb-1">@{leetcodeUserData.username}</p>
-                                        {leetcodeUserData.ranking && (
-                                            <p className="text-sm text-primary font-medium">Ranking: {leetcodeUserData.ranking}</p>
+                                        <h3 className="text-2xl font-semibold mb-1">{formState.leetcodeUserData.realName || formState.leetcodeUserData.username}</h3>
+                                        <p className="text-md text-muted-foreground mb-1">@{formState.leetcodeUserData.username}</p>
+                                        {formState.leetcodeUserData.ranking && (
+                                            <p className="text-sm text-primary font-medium">Ranking: {formState.leetcodeUserData.ranking}</p>
                                         )}
                                     </div>
                                 </div>
 
-                                {leetcodeUserData.recentSubmissions && leetcodeUserData.recentSubmissions.length > 0 && (
+                                {formState.leetcodeUserData.recentSubmissions && formState.leetcodeUserData.recentSubmissions.length > 0 && (
                                     <div className="space-y-3 border-t border-accent/50 pt-4">
                                         <p className="text-sm font-medium text-muted-foreground">Recent submissions:</p>
                                         <ul className="space-y-3">
-                                            {leetcodeUserData.recentSubmissions.slice(0, 3).map((submission: any, index: number) => (
+                                            {formState.leetcodeUserData.recentSubmissions.slice(0, 3).map((submission: any, index: number) => (
                                                 <li key={index} className="text-sm flex items-center gap-3 bg-accent/10 p-3 rounded-md">
                                                     <span
                                                         className={`w-3 h-3 rounded-full flex-shrink-0 ${
@@ -370,9 +379,9 @@ export default function AuthForm() {
                                     <button
                                         type="submit"
                                         className="w-full rounded-lg bg-primary py-3 font-medium text-white transition-colors hover:bg-primary/80"
-                                        disabled={loading}
+                                        disabled={formState.loading}
                                     >
-                                        {loading ?
+                                        {formState.loading ?
                                             <div className="flex items-center justify-center">
                                                 <Ring2 size="20" stroke="3" strokeLength="0.25" bgOpacity="0.1" speed="0.8" color="white" />
                                                 <span className="ml-2">Creating account...</span>
@@ -384,9 +393,9 @@ export default function AuthForm() {
                                 <div>
                                     <button
                                         type="button"
-                                        onClick={() => setView('leetcode')}
+                                        onClick={() => setFormState(prev => ({ ...prev, view: 'leetcode' }))}
                                         className="flex w-full items-center justify-center rounded-lg bg-accent py-3 font-medium text-white transition-colors hover:bg-accent/80"
-                                        disabled={loading}
+                                        disabled={formState.loading}
                                     >
                                         <ArrowLeft size={18} className="mr-2" />
                                         Try a different username
@@ -397,21 +406,21 @@ export default function AuthForm() {
                     )}
 
                     {/* Verification View */}
-                    {view === 'verify' && (
+                    {formState.view === 'verify' && (
                         <>
                             <h1 className="mb-6 text-center text-4xl font-bold">Verify your email</h1>
                             <form onSubmit={handleSubmit} className="space-y-4">
-                                <h3 className="text-center text-lg font-semibold">A verification email has been sent to <span className="text-blue-500">{email}</span> 🥳</h3>
+                                <h3 className="text-center text-lg font-semibold">A verification email has been sent to <span className="text-blue-500">{formState.email}</span> 🥳</h3>
                                 <button
                                     type="button"
                                     onClick={resendEmail}
                                     className="w-full rounded-lg bg-primary py-3 font-medium text-white transition-colors hover:bg-primary/80"
                                 >
-                                    {loading ? <Ring2 size="20" stroke="3" strokeLength="0.25" bgOpacity="0.1" speed="0.8" color="white" /> : 'Resend'}
+                                    {formState.loading ? <Ring2 size="20" stroke="3" strokeLength="0.25" bgOpacity="0.1" speed="0.8" color="white" /> : 'Resend'}
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => setView('signin')}
+                                    onClick={() => setFormState(prev => ({ ...prev, view: 'signin' }))}
                                     className="flex w-full items-center justify-center rounded-lg bg-accent py-3 font-medium text-white transition-colors hover:bg-accent/80"
                                 >
                                     <ArrowLeft size={18} className="mr-2" />

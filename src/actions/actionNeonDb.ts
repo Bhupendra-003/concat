@@ -1,5 +1,5 @@
 "use server"
-import { problem, contest, contestProblems } from "@/db/schema";
+import { problem, contest, contestProblems, user } from "@/db/schema";
 import { db } from "@/db/index";
 import { eq, inArray } from "drizzle-orm";
 
@@ -179,5 +179,17 @@ export async function getContestProblemsWithDetails(contestId: string) {
     } catch (error) {
         console.error('Error fetching contest problems with details:', error);
         return { success: false, error: 'Failed to fetch contest problems with details' };
+    }
+}
+
+export async function updateUserLeetCodeUsername(userId: string, leetcodeUsername: string) {
+    try {
+        const res = await db.update(user).set({ username: leetcodeUsername }).where(eq(user.email, userId));
+        if (res) {
+            console.log('User updated successfully:', res);
+            return { success: true, data: res };
+        }
+    } catch (error) {
+        console.error('Error updating user:', error);
     }
 }
