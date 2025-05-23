@@ -1,7 +1,7 @@
 "use server"
-import { problem, contest, contestProblems, user } from "@/db/schema";
+import { problem, contest, contestProblems, user, userContest, userContestProblem, contestLeaderboard } from "@/db/schema";
 import { db } from "@/db/index";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and, sql } from "drizzle-orm";
 
 
 export async function addProblemToDB(problems: any) {
@@ -194,6 +194,9 @@ export async function updateUserLeetCodeUsername(userId: string, leetcodeUsernam
     }
 }
 
+/**
+ * Gets a user's LeetCode username by their email
+ */
 export async function getUserLeetCodeUsername(userEmail: string) {
     try {
         const res = await db.select({ username: user.username }).from(user).where(eq(user.email, userEmail));
@@ -206,5 +209,167 @@ export async function getUserLeetCodeUsername(userEmail: string) {
     } catch (error) {
         console.error('Error fetching user LeetCode username:', error);
         return { success: false, error: 'Failed to fetch user LeetCode username' };
+    }
+}
+
+/**
+ * Updates a contest with new information
+ */
+export async function updateContest(contestData: {
+    id: string;
+    name: string;
+    startTime: Date;
+    duration: number;
+    maxParticipants: number;
+}) {
+    try {
+        const { id, ...updateData } = contestData;
+
+        // Update the contest
+        const res = await db
+            .update(contest)
+            .set({
+                ...updateData,
+                updatedAt: new Date()
+            })
+            .where(eq(contest.id, id))
+            .returning();
+
+        if (res && res.length > 0) {
+            console.log('Contest updated successfully:', res[0]);
+            return { success: true, data: res[0] };
+        } else {
+            return { success: false, error: 'Contest not found' };
+        }
+    } catch (error) {
+        console.error('Error updating contest:', error);
+        return { success: false, error: 'Failed to update contest' };
+    }
+}
+
+/**
+ * Gets all participants for a specific contest with their details
+ */
+export async function getContestParticipants(contestId: string) {
+    try {
+        // Join userContest with user to get user details
+        const participants = await db
+            .select({
+                userId: user.id,
+                name: user.name,
+                email: user.email,
+                username: user.username,
+                image: user.image,
+                joinedAt: userContest.createdAt,
+                totalPoints: userContest.totalPoints,
+                rank: userContest.rank
+            })
+            .from(userContest)
+            .innerJoin(user, eq(userContest.userId, user.id))
+            .where(eq(userContest.contestId, contestId))
+            .orderBy(userContest.rank);
+
+        return { success: true, data: participants };
+    } catch (error) {
+        console.error('Error getting contest participants:', error);
+        return { success: false, error: 'Failed to get contest participants' };
+    }
+}
+
+/**
+ * Removes a participant from a contest
+ */
+export async function removeParticipant(contestId: string, userId: string) {
+    try {
+        // First, check if the participant exists
+        const participant = await db
+            .select()
+            .from(userContest)
+            .where(
+                and(
+                    eq(userContest.contestId, contestId),
+                    eq(userContest.userId, userId)
+                )
+            );
+
+        if (!participant || participant.length === 0) {
+            return { success: false, error: 'Participant not found' };
+        }
+
+        // Begin transaction to ensure all operations succeed or fail together
+        // 1. Delete from userContestProblem
+        await db
+            .delete(userContestProblem)
+            .where(
+                and(
+                    eq(userContestProblem.contestId, contestId),
+                    eq(userContestProblem.userId, userId)
+                )
+            );
+
+        // 2. Delete from contestLeaderboard
+        await db
+            .delete(contestLeaderboard)
+            .where(
+                and(
+                    eq(contestLeaderboard.contestId, contestId),
+                    eq(contestLeaderboard.userId, userId)
+                )
+            );
+
+        // 3. Delete from userContest
+        await db
+            .delete(userContest)
+            .where(
+                and(
+                    eq(userContest.contestId, contestId),
+                    eq(userContest.userId, userId)
+                )
+            );
+
+        // 4. Decrement the participants count in the contest
+        await db
+            .update(contest)
+            .set({
+                participants: sql`${contest.participants} - 1`,
+                updatedAt: new Date()
+            })
+            .where(eq(contest.id, contestId));
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error removing participant:', error);
+        return { success: false, error: 'Failed to remove participant' };
+    }
+}
+
+/**
+ * Gets all submissions for a specific contest with user and problem details
+ */
+export async function getContestSubmissions(contestId: string) {
+    try {
+        // Join userContestProblem with user and problem to get all details
+        const submissions = await db
+            .select({
+                userId: user.id,
+                userName: user.name,
+                userImage: user.image,
+                problemId: problem.id,
+                problemName: problem.name,
+                problemDifficulty: problem.difficulty,
+                pointsEarned: userContestProblem.pointsEarned,
+                timeTakenSeconds: userContestProblem.timeTakenSeconds,
+                submittedAt: userContestProblem.submittedAt
+            })
+            .from(userContestProblem)
+            .innerJoin(user, eq(userContestProblem.userId, user.id))
+            .innerJoin(problem, eq(userContestProblem.problemId, problem.id))
+            .where(eq(userContestProblem.contestId, contestId))
+            .orderBy(userContestProblem.submittedAt);
+
+        return { success: true, data: submissions };
+    } catch (error) {
+        console.error('Error getting contest submissions:', error);
+        return { success: false, error: 'Failed to get contest submissions' };
     }
 }
