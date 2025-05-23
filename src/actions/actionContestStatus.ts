@@ -58,6 +58,9 @@ export async function updateContestStatuses() {
 export async function updateContestStatus(contestId: string) {
     try {
         const now = new Date();
+        console.log("Current server time:", now);
+        console.log("Current server time ISO:", now.toISOString());
+        console.log("Current server timezone offset:", now.getTimezoneOffset());
 
         // Get the contest
         const contestResult = await db.select().from(contest).where(eq(contest.id, contestId));
@@ -67,8 +70,21 @@ export async function updateContestStatus(contestId: string) {
         }
 
         const c = contestResult[0];
+        console.log("Contest from DB:", c);
+        console.log("Raw startTime from DB:", c.startTime);
+
         const startTime = new Date(c.startTime);
+        console.log("Parsed startTime:", startTime);
+        console.log("startTime ISO:", startTime.toISOString());
+
         const endTime = new Date(startTime.getTime() + c.duration * 60 * 1000); // Convert minutes to milliseconds
+        console.log("Calculated endTime:", endTime);
+        console.log("endTime ISO:", endTime.toISOString());
+
+        console.log("Time comparisons:");
+        console.log("now < startTime:", now < startTime);
+        console.log("now >= startTime && now < endTime:", now >= startTime && now < endTime);
+        console.log("now >= endTime:", now >= endTime);
 
         let newStatus: string;
 

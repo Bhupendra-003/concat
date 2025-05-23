@@ -4,6 +4,7 @@ import { Clock, Users, Award, Calendar } from 'lucide-react';
 import Button from '../Button';
 import Link from 'next/link';
 import { getContest } from '@/actions/actionNeonDb';
+import { formatDateTime, getTimeDisplay } from '@/lib/utils';
 interface Contest {
     id: string;
     name: string;
@@ -81,39 +82,34 @@ function Contest() {
     // Filter contests based on active tab
     const filteredContests = contests.filter(contest => contest.status === activeTab);
 
-    // Format date for display
+    // Format date for display using our utility function
     const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        return formatDateTime(dateString);
     };
 
-    // Get time remaining for active contests
-    const getTimeRemaining = (endTime: string) => {
+    // Get time remaining for contests using our utility function
+    const getTimeRemaining = (contest: Contest) => {
         try {
-            const end = new Date(endTime).getTime();
+            const startTime = new Date(contest.startTime);
+            const endTime = new Date(contest.endTime);
+            const now = new Date();
 
-            // Check if end is a valid number
-            if (isNaN(end)) {
-                console.error("Invalid end time:", endTime);
-                return "Time unavailable";
+            // If contest hasn't started yet, show time until start
+            if (now < startTime) {
+                // Enable debug to see what's happening with the dates
+                return getTimeDisplay(startTime, now, true);
             }
 
-            const now = new Date().getTime();
-            const distance = end - now;
+            // If contest is active, show time until end
+            if (now >= startTime && now < endTime) {
+                // Enable debug to see what's happening with the dates
+                const timeLeft = getTimeDisplay(endTime, now, true);
+                // Replace "Starts in" with "remaining" for active contests
+                return timeLeft.replace("Starts in", "") + " remaining";
+            }
 
-            if (distance < 0) return "Ended";
-
-            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-
-            if (days > 0) return `${days}d ${hours}h remaining`;
-            return `${hours}h ${minutes}m remaining`;
+            // If contest has ended
+            return "Ended";
         } catch (error) {
             console.error("Error calculating time remaining:", error);
             return "Time unavailable";
@@ -164,7 +160,7 @@ function Contest() {
 
                                             <div className="flex items-center">
                                                 <Clock className="w-4 h-4 mr-2 text-gray-400" />
-                                                <span>{getTimeRemaining(contest.endTime)}</span>
+                                                <span>{getTimeRemaining(contest)}</span>
                                             </div>
 
                                             <div className="flex items-center">
@@ -176,7 +172,7 @@ function Contest() {
 
                                     <div className="flex gap-3">
                                         {contest.status === "Active" && <Link href={`/contest/${contest.id}`}><Button>View</Button></Link>}
-                                        {contest.status === "Not Started" && <Link href={`/contest/${contest.id}`}><Button>Register</Button></Link>}
+                                        {contest.status === "Not Started" && <Button className="opacity-50">Coming Soon</Button>}
                                         {contest.status === "Ended" && <Button className="opacity-50">Ended</Button>}
                                     </div>
                                 </div>

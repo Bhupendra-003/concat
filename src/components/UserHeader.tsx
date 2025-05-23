@@ -17,9 +17,14 @@ export default function UserHeader() {
         setLoading(false);
         router.push('/auth');
     };
-    const { data: session } = authClient.useSession()
+    const {
+        data: session,
+        isPending, //loading state
+        error, //error object
+        refetch //refetch the session
+    } = authClient.useSession()
 
-    // Get user data
+    // Get user from session
     const user = session?.user;
     return (
         <header className="bg-background p-4 rounded-b-3xl flex items-center justify-between ">
@@ -35,7 +40,7 @@ export default function UserHeader() {
             {/* Navigation */}
             <div className="flex justify-between items-center gap-12 relative">
                 <nav className="flex space-x-12 text-sm">
-                    <Link href="/" className="text-muted-foreground hover:text-primary transition-all duration-200 font-semibold text-lg">Home</Link>
+                    <Link href="/" className="text-muted-foreground hover:text-primary transition-all duration-200 font-semibold text-lg">Dashboard</Link>
                     <Link href="/settings" className="text-muted-foreground hover:text-primary transition-all duration-200 font-semibold text-lg">Settings</Link>
                     <Link href="/help" className="text-muted-foreground hover:text-primary transition-all duration-200 font-semibold text-lg">Help</Link>
                 </nav>
@@ -75,11 +80,14 @@ export default function UserHeader() {
                                 </div>
                             )}
                             <div className="p-2">
-                                <Link href="/profile" className="block w-full text-left p-2 text-sm text-foreground hover:text-primary hover:bg-accent/10 rounded-md transition-all duration-200">
+                                <Link href="/profile" className="block w-full text-left p-2 text-sm text-foreground hover:text-primary hover:bg-accent/10 rounded transition-all duration-200">
                                     Profile
                                 </Link>
+                                <Link href="/settings" className="block w-full text-left p-2 text-sm text-foreground hover:text-primary hover:bg-accent/10 rounded transition-all duration-200">
+                                    Settings
+                                </Link>
                                 <button
-                                    className="w-full text-left p-2 text-sm text-foreground hover:text-primary hover:bg-accent/10 rounded-md transition-all duration-200"
+                                    className="w-full text-left p-2 text-sm text-foreground hover:text-primary hover:bg-accent/10 rounded transition-all duration-200"
                                     onClick={handleLogout}
                                 >
                                     {loading ? (

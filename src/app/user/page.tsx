@@ -3,10 +3,11 @@
 import React, { useEffect, useState } from 'react';
 import Header from '@/components/UserHeader';
 import Contest from '@/components/tabs/Contest';
+import GlobalLeaderboard from '@/components/tabs/GlobalLeaderboard';
+import Announcements from '@/components/tabs/Announcements';
 import { authClient } from "@/lib/auth-client";
 import { useRouter } from 'next/navigation';
 import Loading from '@/components/Loading';
-import { getUserLeetCodeUsername } from '@/actions/actionNeonDb';
 
 interface TabData {
   id: number;
@@ -33,26 +34,8 @@ function Page() {
         // Redirect to auth page if not logged in
         router.push('/auth');
       } else {
-        // Once session is checked, fetch LeetCode username if not in localStorage
-        const fetchLeetCodeUsername = async () => {
-          try {
-            // fetch from database and store it
-            if (session.user.email) {
-              const result = await getUserLeetCodeUsername(session.user.email);
-              if (result.success && result.username) {
-                localStorage.setItem('LeetcodeUsername', result.username);
-                console.log('LeetCode username stored in localStorage:', result.username);
-              }
-            }
-          } catch (error) {
-            console.error('Error fetching LeetCode username:', error);
-          } finally {
-            // Stop loading regardless of the result
-            setLoading(false);
-          }
-        };
-
-        fetchLeetCodeUsername();
+        // Once session is checked, stop the loading
+        setLoading(false);
       }
     }
   }, [session, isPending, router]);
@@ -95,8 +78,8 @@ function Page() {
 
         <div className="mt-8">
           {selectedTab.id === 1 && <Contest />}
-          {selectedTab.id === 2 && <div>Leaderboard Content</div>}
-          {selectedTab.id === 3 && <div>Announcements Content</div>}
+          {selectedTab.id === 2 && <GlobalLeaderboard />}
+          {selectedTab.id === 3 && <Announcements />}
         </div>
       </main>
     </div>

@@ -21,6 +21,7 @@ import {
 } from '@/actions/actionLeaderboard';
 import { updateContestStatus } from '@/actions/actionContestStatus';
 import { authClient } from "@/lib/auth-client";
+import { formatDateTime, getTimeDisplay } from '@/lib/utils';
 
 interface TabData {
     id: number;
@@ -551,15 +552,12 @@ function Page() {
         }
     };
 
-    // Format date for display
+    // Format date for display using our utility function
     const formatDate = (date: Date) => {
-        return new Date(date).toLocaleString('en-US', {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        // Add debug=true to log date information to the console
+        return formatDateTime(date, {
+            weekday: 'short' // Add weekday to the default format
+        }, true); // Enable debug mode to see what's happening with the dates
     };
 
     return (
@@ -602,8 +600,8 @@ function Page() {
                                     </Card>
                                 )}
 
-                                {/* Participate Button */}
-                                {!hasJoined && (contest.status === 'Not Started' || contest.status === 'upcoming' || contest.status === 'Active') && (
+                                {/* Participate Button - only for active contests */}
+                                {!hasJoined && contest.status === 'Active' && (
                                     <Button
                                         onClick={handleParticipate}
                                         className="bg-primary hover:bg-primary/90 text-white font-medium"
@@ -685,7 +683,15 @@ function Page() {
                         {/* Tab Content */}
                         <Card className="bg-card rounded-xl shadow-md border border-border p-6">
                             {selectedTab.id === 1 && (
-                                problems.length > 0 ? (
+                                contest.status === 'Not Started' || contest.status === 'upcoming' ? (
+                                    // Show message if contest hasn't started yet
+                                    <div className="text-center py-12 text-muted-foreground">
+                                        <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                                        <h3 className="text-lg font-medium">Contest hasn't started yet</h3>
+                                        <p className="mt-2">Problems will be available once the contest begins.</p>
+                                    </div>
+                                ) : problems.length > 0 ? (
+                                    // Show problems if contest has started and problems exist
                                     <div className="space-y-2">
                                         <div className='flex justify-between items-center'>
                                             <h2 className="text-xl font-semibold mb-4 text-foreground">Contest Problems</h2>
@@ -700,6 +706,7 @@ function Page() {
                                         <Problems problems={problems} />
                                     </div>
                                 ) : (
+                                    // Show message if no problems found
                                     <div className="text-center py-12 text-muted-foreground">
                                         <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
                                         <h3 className="text-lg font-medium">No problems found for this contest</h3>

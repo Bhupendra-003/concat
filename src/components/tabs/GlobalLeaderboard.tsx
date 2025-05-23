@@ -1,27 +1,45 @@
 "use client";
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Medal, Trophy, User } from 'lucide-react';
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDateTime } from '@/lib/utils';
+import { getGlobalLeaderboard } from '@/actions/actionGlobalLeaderboard';
 
 interface LeaderboardEntry {
+    id: string;
     rank: number;
-    score: number;
-    userId: string;
+    points: number;
     name: string;
     username: string;
     image: string | null;
     updatedAt: Date;
 }
 
-interface LeaderboardProps {
-    entries: LeaderboardEntry[];
-    loading: boolean;
-    currentUserId?: string;
-}
+const GlobalLeaderboard: React.FC = () => {
+    const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [currentUserId, setCurrentUserId] = useState<string | undefined>();
 
-const Leaderboard: React.FC<LeaderboardProps> = ({ entries, loading, currentUserId }) => {
+    useEffect(() => {
+        const fetchLeaderboard = async () => {
+            setLoading(true);
+            try {
+                const result = await getGlobalLeaderboard();
+                if (result.success && result.data) {
+                    setEntries(result.data);
+                    console.log("Global leaderboard fetched successfully:", result.data);
+                }
+            } catch (error) {
+                console.error("Error fetching global leaderboard:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchLeaderboard();
+    }, []);
+
     // Function to get medal icon based on rank
     const getMedalIcon = (rank: number) => {
         switch (rank) {
@@ -48,7 +66,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ entries, loading, currentUser
 
     // Function to format date using our utility function
     const formatDate = (date: Date) => {
-        // Add debug=true to log date information to the console
         return formatDateTime(date, undefined, true);
     };
 
@@ -73,9 +90,9 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ entries, loading, currentUser
         return (
             <div className="text-center py-12">
                 <Trophy className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-medium">No participants yet</h3>
+                <h3 className="text-lg font-medium">No users on the leaderboard yet</h3>
                 <p className="mt-2 text-muted-foreground">
-                    Be the first to join this contest and appear on the leaderboard!
+                    Participate in contests to earn points and appear on the global leaderboard!
                 </p>
             </div>
         );
@@ -86,7 +103,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ entries, loading, currentUser
             {/* Header */}
             <div className="grid grid-cols-12 bg-card/50 p-4 text-sm font-medium text-muted-foreground rounded-t-lg">
                 <div className="col-span-1 text-center">Rank</div>
-                <div className="col-span-7">Participant</div>
+                <div className="col-span-7">User</div>
                 <div className="col-span-2 text-center">Points</div>
                 <div className="col-span-2 text-right">Last Update</div>
             </div>
@@ -95,10 +112,10 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ entries, loading, currentUser
             <div className="space-y-1">
                 {entries.map((entry) => (
                     <div
-                        key={entry.userId}
+                        key={entry.id}
                         className={`grid grid-cols-12 items-center p-4 rounded-md ${
-                            entry.userId === currentUserId
-                                ? 'bg-background'
+                            entry.id === currentUserId
+                                ? 'bg-accent/10'
                                 : 'bg-background'
                         } transition-colors duration-150`}
                     >
@@ -123,7 +140,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ entries, loading, currentUser
 
                         {/* Points */}
                         <div className="col-span-2 text-center font-mono font-medium">
-                            {entry.score}
+                            {entry.points}
                         </div>
 
                         {/* Last Update */}
@@ -137,4 +154,4 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ entries, loading, currentUser
     );
 };
 
-export default Leaderboard;
+export default GlobalLeaderboard;
