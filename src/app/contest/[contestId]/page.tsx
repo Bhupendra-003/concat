@@ -266,7 +266,7 @@ function Page() {
 
         // Get the LeetCode username from localStorage or use a default
         const leetcodeUsername = localStorage.getItem('LeetcodeUsername') || '';
-
+        console.log("LeetCode username for contest", leetcodeUsername);
         toast.promise(getRecentSubmissions(leetcodeUsername), {
             loading: 'Checking Submissions...',
             success: 'Submissions Checked',
@@ -280,27 +280,42 @@ function Page() {
             console.log("Accepted Submissions", acceptedSubmissions);
 
             // Check if any of the accepted submissions match our contest problems
-            if (acceptedSubmissions.length > 0 && problems.length > 0) {
-                // Get today's date in ISO format (YYYY-MM-DD)
-                const today = new Date().toISOString().split('T')[0];
-
+            if (acceptedSubmissions.length > 0 && problems.length > 0 && contest) {
+                // Get contest start time
+                const contestStartTime = new Date(contest.startTime).getTime();
+                console.log("Contest start time:", new Date(contestStartTime).toISOString());
+                
                 // Create a new array of problems with updated status
                 const updatedProblems = problems.map(problem => {
                     // Extract the slug from the problem link
                     const problemLink = problem.link || '';
                     const slugMatch = problemLink.match(/\/problems\/([^/]+)\//);
                     const problemSlug = slugMatch ? slugMatch[1] : '';
+                    console.log(`Checking problem: ${problem.name}, slug: ${problemSlug}`);
 
-                    // Check if this problem has been solved
+                    // Check if this problem has been solved after contest started
                     const isSolved = acceptedSubmissions.some(submission => {
-                        // Check if submission is from today
-                        const submissionDate = new Date(parseInt(submission.timestamp) * 1000).toISOString().split('T')[0];
-                        const isToday = submissionDate === today;
-
+                        // Convert submission timestamp to milliseconds
+                        const submissionTime = parseInt(submission.timestamp) * 1000;
+                        const submissionDate = new Date(submissionTime).toISOString();
+                        
+                        // Check if submission was after contest start
+                        const isAfterContestStart = submissionTime >= contestStartTime;
+                        
                         // Check if the submission matches this problem's slug
-                        return isToday && submission.titleSlug === problemSlug;
+                        const isMatch = submission.titleSlug === problemSlug;
+                        
+                        if (isMatch) {
+                            console.log(`Found matching submission for ${problemSlug}:`);
+                            console.log(`  Submission time: ${submissionDate}`);
+                            console.log(`  After contest start: ${isAfterContestStart}`);
+                        }
+                        
+                        return isAfterContestStart && isMatch;
                     });
 
+                    console.log(`Problem ${problem.name} is solved: ${isSolved}`);
+                    
                     // Return updated problem with solved status if found
                     return {
                         ...problem,
@@ -312,6 +327,7 @@ function Page() {
                 const hasChanges = updatedProblems.some((problem, index) =>
                     problem.status !== problems[index].status
                 );
+                console.log("Problem statuses changed:", hasChanges);
 
                 // Only update state if there are changes
                 if (hasChanges) {
@@ -322,6 +338,7 @@ function Page() {
                     const newlySolvedProblems = updatedProblems.filter((problem, index) =>
                         problem.status === 'solved' && problems[index].status === 'unsolved'
                     );
+                    console.log("Newly solved problems:", newlySolvedProblems.length);
 
                     // If there are newly solved problems, update points in the database
                     if (newlySolvedProblems.length > 0) {
@@ -330,6 +347,7 @@ function Page() {
                             const problemLink = problem.link || '';
                             const idMatch = problemLink.match(/\/problems\/([^/]+)\//);
                             const problemSlug = idMatch ? idMatch[1] : '';
+                            console.log(`Updating points for problem: ${problem.name}, slug: ${problemSlug}`);
 
                             // Find the problem in the original data to get the actual ID
                             const originalProblemData = await getContestProblemsWithDetails(contestId);
@@ -339,14 +357,27 @@ function Page() {
                                 );
 
                                 if (matchedProblem) {
+                                    // Make sure we're passing a number for points
+                                    const pointsValue = typeof problem.points === 'string' 
+                                        ? parseInt(problem.points) 
+                                        : problem.points;
+                                    
+                                    console.log(`Found matching problem in DB. ID: ${matchedProblem.problemId}, Points: ${pointsValue}`);
+                                    
                                     // Update points in the database
-                                    await updateUserContestPoints(
+                                    const updateResult = await updateUserContestPoints(
                                         contestId,
                                         session.user.id,
                                         matchedProblem.problemId,
-                                        problem.points
+                                        pointsValue
                                     );
+                                    
+                                    console.log("Points update result:", updateResult);
+                                } else {
+                                    console.error(`Could not find problem with slug ${problemSlug} in contest problems`);
                                 }
+                            } else {
+                                console.error("Failed to fetch original problem data");
                             }
                         }
 

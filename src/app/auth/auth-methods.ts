@@ -28,7 +28,7 @@ export const signIn = async (email: string, password: string) => {
     });
     if (error) {
         throw error;
-    }else{
+    } else {
         return { data, error };
     }
 }

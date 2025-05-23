@@ -10,7 +10,7 @@ import Loading from '@/components/Loading';
 import 'ldrs/react/Ring2.css';
 import { toast } from 'react-hot-toast';
 import { getLeetCodeUserProfile } from '@/actions/actionLeetQuery';
-import { updateUserLeetCodeUsername } from '@/actions/actionNeonDb';
+import { updateUserLeetCodeUsername, getUserLeetCodeUsername } from '@/actions/actionNeonDb';
 export default function AuthForm() {
     const router = useRouter();
     // Combined state object for form data and UI state
@@ -101,7 +101,18 @@ export default function AuthForm() {
                 loading: 'Signing in...',
                 success: 'Signed in successfully',
                 error: 'Failed to sign in'
-            }).then(() => {
+            }).then(async () => {
+                // After successful sign-in, fetch the user's LeetCode username from the database
+                try {
+                    const result = await getUserLeetCodeUsername(formState.email);
+                    if (result.success && result.username) {
+                        // Store the LeetCode username in localStorage
+                        localStorage.setItem('LeetcodeUsername', result.username);
+                        console.log('LeetCode username stored in localStorage:', result.username);
+                    }
+                } catch (error) {
+                    console.error('Error fetching LeetCode username:', error);
+                }
                 router.push('/user');
             }).catch((error: any) => {
                 setFormState(prev => ({ ...prev, error: error.message }));
@@ -230,7 +241,20 @@ export default function AuthForm() {
 
                             </form>
                             <p className='text-center my-4'>Or</p>
-                            <button className="w-full rounded-lg bg-accent py-3 font-medium text-white transition-colors hover:bg-white hover:text-black" onClick={googleSignIn}>
+                            <button
+                                className="w-full rounded-lg bg-accent py-3 font-medium text-white transition-colors hover:bg-white hover:text-black"
+                                onClick={async () => {
+                                    try {
+                                        await googleSignIn();
+                                        // After successful Google sign-in, we'll be redirected to /user
+                                        // We'll fetch the LeetCode username in a useEffect in the user page
+                                        // or when the session is loaded
+                                        router.push('/user');
+                                    } catch (error) {
+                                        console.error('Google sign-in error:', error);
+                                    }
+                                }}
+                            >
                                 {formState.loading ?
                                 <Ring2 size="20" stroke="3" strokeLength="0.25" bgOpacity="0.1" speed="0.8" color="white" />
                                 : <div className='flex items-center justify-center gap-4'>

@@ -6,6 +6,7 @@ import Contest from '@/components/tabs/Contest';
 import { authClient } from "@/lib/auth-client";
 import { useRouter } from 'next/navigation';
 import Loading from '@/components/Loading';
+import { getUserLeetCodeUsername } from '@/actions/actionNeonDb';
 
 interface TabData {
   id: number;
@@ -32,8 +33,26 @@ function Page() {
         // Redirect to auth page if not logged in
         router.push('/auth');
       } else {
-        // Once session is checked, stop the loading
-        setLoading(false);
+        // Once session is checked, fetch LeetCode username if not in localStorage
+        const fetchLeetCodeUsername = async () => {
+          try {
+            // fetch from database and store it
+            if (session.user.email) {
+              const result = await getUserLeetCodeUsername(session.user.email);
+              if (result.success && result.username) {
+                localStorage.setItem('LeetcodeUsername', result.username);
+                console.log('LeetCode username stored in localStorage:', result.username);
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching LeetCode username:', error);
+          } finally {
+            // Stop loading regardless of the result
+            setLoading(false);
+          }
+        };
+
+        fetchLeetCodeUsername();
       }
     }
   }, [session, isPending, router]);

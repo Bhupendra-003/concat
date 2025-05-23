@@ -193,3 +193,18 @@ export async function updateUserLeetCodeUsername(userId: string, leetcodeUsernam
         console.error('Error updating user:', error);
     }
 }
+
+export async function getUserLeetCodeUsername(userEmail: string) {
+    try {
+        const res = await db.select({ username: user.username }).from(user).where(eq(user.email, userEmail));
+        if (res && res.length > 0) {
+            console.log('User LeetCode username fetched successfully:', res[0].username);
+            return { success: true, username: res[0].username };
+        } else {
+            return { success: false, error: 'User not found' };
+        }
+    } catch (error) {
+        console.error('Error fetching user LeetCode username:', error);
+        return { success: false, error: 'Failed to fetch user LeetCode username' };
+    }
+}
